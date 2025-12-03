@@ -167,21 +167,27 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
             const newRoutes = await solveVRP(cluster.orders, origin, apiKey, config);
 
             if (newRoutes.length > 0) {
-                // VRP might return multiple routes if constraints are strict, but here we want to keep it as one cluster if possible.
-                // If VRP splits it, we might have to handle that. 
-                // For simplicity in this feature, we take the first route or merge them?
-                // Actually, solveVRP returns an array of Clusters.
+                // Fix: Merge all returned routes back into one cluster.
+                // The user wants to re-sequence THIS cluster, not split it.
+                // If VRP returns multiple routes (due to constraints), we combine them.
 
-                // Let's assume we just want to update the geometry and sequence of THIS cluster.
-                // We take the first result and update our cluster.
-                const optimized = newRoutes[0];
+                const mergedOrders = newRoutes.flatMap(r => r.orders);
+                const totalDistance = newRoutes.reduce((acc, r) => acc + r.totalDistanceKm, 0);
+                const totalCost = newRoutes.reduce((acc, r) => acc + r.estimatedCost, 0);
+
+                // For geometry, we can only show the first one or try to merge? 
+                // Merging geometries is complex. For now, let's take the geometry of the first route 
+                // or the one with the most orders. 
+                // Ideally, we should request VRP with 1 vehicle to force 1 route, 
+                // but if that fails, merging orders is the safe fallback to avoid data loss.
+                const mainRoute = newRoutes.sort((a, b) => b.orders.length - a.orders.length)[0];
 
                 onUpdateCluster({
                     ...cluster,
-                    orders: optimized.orders,
-                    totalDistanceKm: optimized.totalDistanceKm,
-                    estimatedCost: optimized.estimatedCost,
-                    geometry: optimized.geometry
+                    orders: mergedOrders,
+                    totalDistanceKm: totalDistance,
+                    estimatedCost: totalCost,
+                    geometry: mainRoute.geometry // Visual compromise
                 });
                 alert(`Đã tối ưu lại chuyến ${cluster.name}!`);
             }
