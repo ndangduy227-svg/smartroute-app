@@ -301,6 +301,105 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
                             </button>
                         </div>
                     </div>
+
+                    <div className="mt-8 pt-6 border-t border-slate-700">
+                        <h4 className="text-gray-400 text-sm font-bold mb-4 uppercase">Hoặc nhập từ POSCake (Pancake)</h4>
+                        <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                            <div className="text-xs text-gray-400 mb-4 flex items-start gap-2 bg-slate-800 p-3 rounded border border-slate-600">
+                                <svg className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span>
+                                    <strong>Hướng dẫn:</strong> Truy cập Pancake POS &rarr; Cấu hình &rarr; Nâng cao &rarr; Kết nối bên thứ 3 &rarr; Webhook/API để lấy API Key. Shop ID là mã cửa hàng của bạn.
+                                </span>
+                            </div>
+                            <div className="flex flex-col md:flex-row gap-3 items-end">
+                                <div className="flex-1 w-full">
+                                    <label className="text-xs text-gray-500 block mb-1">API Key</label>
+                                    <input
+                                        type="text"
+                                        id="poscakeApiKey"
+                                        defaultValue="01fbac7d5156421788a183a32f524b50"
+                                        placeholder="Nhập API Key..."
+                                        className="bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white text-sm w-full focus:border-blue-500 outline-none"
+                                    />
+                                </div>
+                                <div className="w-full md:w-40">
+                                    <label className="text-xs text-gray-500 block mb-1">Shop ID</label>
+                                    <input
+                                        type="text"
+                                        id="poscakeShopId"
+                                        defaultValue="714385205"
+                                        placeholder="Nhập Shop ID..."
+                                        className="bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white text-sm w-full focus:border-blue-500 outline-none"
+                                    />
+                                </div>
+                                <button
+                                    onClick={async () => {
+                                        const apiKey = (document.getElementById('poscakeApiKey') as HTMLInputElement).value;
+                                        const shopId = (document.getElementById('poscakeShopId') as HTMLInputElement).value;
+
+                                        if (!apiKey || !shopId) {
+                                            setErrorMsg('Vui lòng nhập API Key và Shop ID POSCake');
+                                            return;
+                                        }
+
+                                        setLoading(true);
+                                        setErrorMsg('');
+                                        try {
+                                            const response = await fetch(`/api/poscake/orders?shopId=${shopId}&token=${apiKey}`);
+                                            const data = await response.json();
+                                            if (data.error) throw new Error(data.error);
+
+                                            const newOrders = data.data.map((r: any) => ({
+                                                id: r.id,
+                                                address: r.address,
+                                                lat: 0, lng: 0,
+                                                weight: r.weight || 1,
+                                                cod: r.cod || 0,
+                                                customerName: r.customerName,
+                                                status: 'pending'
+                                            }));
+
+                                            const headerRow = ['id', 'customerName', 'address', 'weight', 'cod', 'status'];
+                                            setHeaders(headerRow);
+
+                                            const rawOrders = newOrders.map((o: any, idx: number) => ({
+                                                id: `pos-${idx}`,
+                                                ...o,
+                                                weight: String(o.weight),
+                                                cod: String(o.cod)
+                                            }));
+
+                                            setParsedRows(rawOrders);
+                                            setFileName(`POSCake Shop: ${shopId}`);
+
+                                            setMapping({
+                                                customerName: 'customerName',
+                                                phoneNumber: 'phoneNumber',
+                                                address: 'address',
+                                                note: 'note',
+                                                cod: 'cod'
+                                            });
+
+                                            setStep(2);
+                                        } catch (error: any) {
+                                            setErrorMsg('Lỗi import POSCake: ' + error.message);
+                                        } finally {
+                                            setLoading(false);
+                                        }
+                                    }}
+                                    disabled={loading}
+                                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap"
+                                >
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    {loading ? 'Đang tải...' : 'Import POSCake'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
 
