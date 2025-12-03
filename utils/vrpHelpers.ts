@@ -162,7 +162,7 @@ export const solveVRP = async (orders: Order[], origin: Coordinate, apiKey: stri
     // 3. Parse Response into Clusters
     const clusterColors = ['#2DE1C2', '#5B67C9', '#F6E05E', '#F687B3', '#68D391', '#63B3ED', '#ED8936', '#9F7AEA'];
 
-    return data.routes.map((route: any, idx: number) => {
+    const parsedRoutes = data.routes.map((route: any, idx: number) => {
         // Map steps back to orders
         const routeOrders: Order[] = [];
         const steps = route.steps;
@@ -195,4 +195,38 @@ export const solveVRP = async (orders: Order[], origin: Coordinate, apiKey: stri
             geometry: route.geometry // Encoded polyline
         };
     });
+
+    // 4. Handle Unassigned Jobs
+    if (data.unassigned && Array.isArray(data.unassigned) && data.unassigned.length > 0) {
+        const unassignedOrders: Order[] = [];
+        data.unassigned.forEach((item: any) => {
+            // item.id is the job ID
+            const jobIntId = item.id;
+            const originalOrderId = orderIdMap.get(jobIntId);
+            if (originalOrderId) {
+                const order = orders.find(o => o.id === originalOrderId);
+                if (order) unassignedOrders.push(order);
+            }
+        });
+
+        if (unassignedOrders.length > 0) {
+            console.warn(`[VRP] ${unassignedOrders.length} orders were unassigned.`);
+            parsedRoutes.push({
+                id: `CL-UNASSIGNED-${Date.now()}`,
+                name: `Không thể giao (${unassignedOrders.length})`,
+                orders: unassignedOrders,
+                totalDistanceKm: 0,
+                estimatedCost: 0,
+                extraFee: 0,
+                assignedShipperId: null,
+                isCompleted: false,
+                createdAt: Date.now(),
+                color: '#CBD5E0', // Grey for unassigned
+                centroid: origin,
+                geometry: '' // No geometry
+            });
+        }
+    }
+
+    return parsedRoutes;
 };
