@@ -5,12 +5,7 @@ dotenv.config();
 
 const POSCAKE_API_BASE = 'https://pos.pages.fm/api/v1';
 
-import axios from 'axios';
-import dotenv from 'dotenv';
 
-dotenv.config();
-
-const POSCAKE_API_BASE = 'https://pos.pages.fm/api/v1';
 
 export const fetchPoscakeOrders = async (shopId, accessToken) => {
     try {
