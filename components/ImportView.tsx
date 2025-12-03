@@ -226,6 +226,7 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
                                 <input
                                     type="text"
                                     id="larkBaseId"
+                                    defaultValue="BW7mbi3nEaZlCZsW2Y2lE5JUgNH"
                                     placeholder="bas..."
                                     className="bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white text-sm w-32 focus:border-brand-teal outline-none"
                                 />
@@ -235,6 +236,7 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
                                 <input
                                     type="text"
                                     id="larkTableId"
+                                    defaultValue="tblmPEPFE5jeOGjN"
                                     placeholder="tbl..."
                                     className="bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white text-sm w-32 focus:border-brand-teal outline-none"
                                 />
