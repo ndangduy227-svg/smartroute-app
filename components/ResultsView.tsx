@@ -17,6 +17,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
     const [selectedClusterId, setSelectedClusterId] = useState<string | null>(clusters[0]?.id || null);
     const [viewMode, setViewMode] = useState<'MAP' | 'DETAILS' | 'KANBAN'>('MAP');
     const [isOptimizing, setIsOptimizing] = useState(false);
+    const [showSyncModal, setShowSyncModal] = useState(false);
 
     const selectedCluster = clusters.find(c => c.id === selectedClusterId);
 
@@ -278,15 +279,79 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
                         )}
                     </div>
                     {selectedCluster && viewMode === 'DETAILS' && (
-                        <button
-                            onClick={handlePrint}
-                            className="flex items-center gap-2 px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-600 transition"
-                        >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                            In Phiếu Giao
-                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setShowSyncModal(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500 transition font-bold"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                Sync Lark
+                            </button>
+                            <button
+                                onClick={handlePrint}
+                                className="flex items-center gap-2 px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-600 transition"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                In Phiếu
+                            </button>
+                        </div>
                     )}
                 </div>
+
+                {/* Sync Modal */}
+                {showSyncModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                        <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 w-96 shadow-2xl">
+                            <h3 className="text-xl font-bold text-white mb-4">Đồng bộ sang Lark Base</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-1">Base ID</label>
+                                    <input id="syncBaseId" type="text" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white" placeholder="bas..." />
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-1">Table ID (Routes)</label>
+                                    <input id="syncTableId" type="text" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white" placeholder="tbl..." />
+                                </div>
+                                <div className="flex justify-end gap-2 mt-6">
+                                    <button
+                                        onClick={() => setShowSyncModal(false)}
+                                        className="px-4 py-2 text-gray-400 hover:text-white"
+                                    >
+                                        Hủy
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            const baseId = (document.getElementById('syncBaseId') as HTMLInputElement).value;
+                                            const tableId = (document.getElementById('syncTableId') as HTMLInputElement).value;
+                                            if (!baseId || !tableId) return alert('Nhập đủ thông tin!');
+
+                                            try {
+                                                const res = await fetch('/api/lark/routes', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({
+                                                        baseId,
+                                                        tableId,
+                                                        routes: clusters // Sync all clusters
+                                                    })
+                                                });
+                                                const json = await res.json();
+                                                if (json.error) throw new Error(json.error);
+                                                alert(`Đã đồng bộ ${json.count} chuyến xe!`);
+                                                setShowSyncModal(false);
+                                            } catch (e: any) {
+                                                alert('Lỗi: ' + e.message);
+                                            }
+                                        }}
+                                        className="px-4 py-2 bg-brand-teal text-brand-dark font-bold rounded hover:bg-teal-400"
+                                    >
+                                        Đồng bộ ngay
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* View Content */}
                 <div className="flex-1 bg-slate-900 border border-slate-700 rounded-xl overflow-hidden relative">
