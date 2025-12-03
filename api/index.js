@@ -1,6 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import { fetchLarkRecords, createLarkRecords } from '../larkService.js';
+import { fetchPoscakeOrders } from '../poscakeService.js';
 
 dotenv.config();
 
@@ -63,6 +64,19 @@ app.post('/api/lark/routes', async (req, res) => {
         res.json({ success: true, count: result.length });
     } catch (error) {
         console.error('Error syncing routes:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// POSCake API Proxy
+app.get('/api/poscake/orders', async (req, res) => {
+    try {
+        const { shopId, token } = req.query;
+        // Use query params if provided, otherwise fallback to env vars in service
+        const orders = await fetchPoscakeOrders(shopId, token);
+        res.json({ data: orders });
+    } catch (error) {
+        console.error('Error fetching POSCake orders:', error.message);
         res.status(500).json({ error: error.message });
     }
 });
