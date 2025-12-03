@@ -74,7 +74,8 @@ app.post('/api/lark/routes', async (req, res) => {
 });
 
 // Catch-all handler for SPA
-app.get('*', (req, res) => {
+// Catch-all handler for SPA
+app.use((req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
