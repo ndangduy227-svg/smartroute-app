@@ -54,9 +54,9 @@ app.post('/api/lark/routes', async (req, res) => {
         const records = routes.map(r => ({
             "Route Name": r.name,
             "Driver": r.driverName || 'Unassigned',
-            "Total Distance": r.totalDistanceKm,
-            "Stop Count": r.orders.length,
-            "Stops": JSON.stringify(r.orders.map(o => o.address)) // Lark Text field
+            "Total Distance": String(r.totalDistanceKm), // Ensure string for Text field
+            "Stop Count": String(r.orders.length),       // Ensure string for Text field
+            "Stops": JSON.stringify(r.orders.map(o => o.address))
         }));
 
         const result = await createLarkRecords(targetBaseId, targetTableId, records);
