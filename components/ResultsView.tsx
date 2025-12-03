@@ -306,11 +306,11 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-sm text-gray-400 mb-1">Base ID</label>
-                                    <input id="syncBaseId" type="text" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white" placeholder="bas..." />
+                                    <input id="syncBaseId" type="text" defaultValue="BW7mbi3nEaZlCZsW2Y2lE5JUgNH" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white" placeholder="bas..." />
                                 </div>
                                 <div>
                                     <label className="block text-sm text-gray-400 mb-1">Table ID (Routes)</label>
-                                    <input id="syncTableId" type="text" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white" placeholder="tbl..." />
+                                    <input id="syncTableId" type="text" defaultValue="tblrv6rCvSV0b60K" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white" placeholder="tbl..." />
                                 </div>
                                 <div className="flex justify-end gap-2 mt-6">
                                     <button
