@@ -172,6 +172,20 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
                 // If VRP returns multiple routes (due to constraints), we combine them.
 
                 const mergedOrders = newRoutes.flatMap(r => r.orders);
+
+                // Safety Check: Ensure no orders are lost during VRP
+                // Sometimes VRP might drop orders if logic fails or unassigned parsing fails.
+                // We must guarantee that ALL input orders are present in the output.
+                const inputOrderIds = new Set(cluster.orders.map(o => o.id));
+                const outputOrderIds = new Set(mergedOrders.map(o => o.id));
+
+                const missingOrders = cluster.orders.filter(o => !outputOrderIds.has(o.id));
+
+                if (missingOrders.length > 0) {
+                    console.warn('[Re-optimize] Restoring missing orders:', missingOrders);
+                    mergedOrders.push(...missingOrders);
+                }
+
                 const totalDistance = newRoutes.reduce((acc, r) => acc + r.totalDistanceKm, 0);
                 const totalCost = newRoutes.reduce((acc, r) => acc + r.estimatedCost, 0);
 
