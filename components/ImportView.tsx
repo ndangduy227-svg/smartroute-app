@@ -344,39 +344,6 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
                             Quay lại
                         </button>
                         <button
-                            onClick={async () => {
-                                setLoading(true);
-                                try {
-                                    const response = await fetch('/api/poscake/orders');
-                                    const data = await response.json();
-                                    if (data.error) throw new Error(data.error);
-
-                                    const newOrders = data.data.map((r: any) => ({
-                                        id: r.id,
-                                        address: r.address,
-                                        lat: 0, lng: 0, // Will be geocoded later
-                                        weight: r.weight || 1,
-                                        cod: r.cod || 0,
-                                        customerName: r.customerName,
-                                        status: 'pending'
-                                    }));
-
-                                    onOrdersImported(newOrders); // Assuming onOrdersImported is the correct callback
-                                    alert(`Đã import thành công ${newOrders.length} đơn hàng từ POSCake!`);
-                                } catch (error: any) {
-                                    alert('Lỗi import POSCake: ' + error.message);
-                                } finally {
-                                    setLoading(false);
-                                }
-                            }}
-                            disabled={loading}
-                            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                        >
-                            {/* Assuming Upload icon is available or needs to be imported */}
-                            {/* <Upload size={20} /> */}
-                            Import POSCake
-                        </button>
-                        <button
                             onClick={handleConfirmMapping}
                             className="bg-brand-purple hover:bg-indigo-500 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-lg shadow-indigo-500/20"
                         >
