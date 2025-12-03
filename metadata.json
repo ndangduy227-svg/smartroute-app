@@ -1,0 +1,7 @@
+{
+  "name": "SmartRoute - MindTransform",
+  "description": "Intelligent route planning and logistics management system powered by MindTransform.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
