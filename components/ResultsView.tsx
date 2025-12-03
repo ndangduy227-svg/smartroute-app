@@ -121,6 +121,23 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
         }
     };
 
+    const handleDeleteOrder = (clusterId: string, orderId: string) => {
+        if (!confirm('Bạn có chắc muốn xóa đơn hàng này khỏi chuyến xe?')) return;
+
+        const cluster = clusters.find(c => c.id === clusterId);
+        if (!cluster) return;
+
+        const newOrders = cluster.orders.filter(o => o.id !== orderId);
+
+        // Update the cluster with the new list of orders.
+        // Note: Metrics (distance, cost) won't be recalculated automatically here.
+        // The user should click "Re-optimize" to get accurate metrics.
+        onUpdateCluster({
+            ...cluster,
+            orders: newOrders
+        });
+    };
+
     // --- RE-OPTIMIZE LOGIC ---
     const handleReoptimize = async (cluster: Cluster) => {
         if (!apiKey) {
@@ -393,8 +410,22 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
                                                 className="bg-slate-700 p-3 rounded border border-slate-600 cursor-move hover:border-brand-teal transition-colors shadow-sm group"
                                             >
                                                 <div className="flex justify-between items-start mb-1">
-                                                    <span className="font-bold text-sm text-white">{idx + 1}. {order.customerName}</span>
-                                                    <span className="text-xs font-mono text-brand-teal">{order.cod.toLocaleString()}</span>
+                                                    <span className="font-bold text-sm text-white flex-1 mr-2">{idx + 1}. {order.customerName}</span>
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        <span className="text-xs font-mono text-brand-teal">{order.cod.toLocaleString()}</span>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDeleteOrder(cluster.id, order.id);
+                                                            }}
+                                                            className="text-gray-500 hover:text-red-500 transition-colors p-0.5 rounded hover:bg-slate-600"
+                                                            title="Xóa đơn hàng"
+                                                        >
+                                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
                                                 </div>
                                                 <p className="text-xs text-gray-300 line-clamp-2 mb-1">{order.address}</p>
                                                 <div className="flex justify-between items-center mt-2">
