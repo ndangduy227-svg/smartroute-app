@@ -23,6 +23,7 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
     const [isDragging, setIsDragging] = useState(false);
     const [fileName, setFileName] = useState<string>('');
     const [errorMsg, setErrorMsg] = useState<string>('');
+    const [loading, setLoading] = useState(false);
 
     const processFile = async (file: File) => {
         setErrorMsg('');
@@ -341,6 +342,39 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
                             className="px-4 py-2 text-gray-400 hover:text-white"
                         >
                             Quay lại
+                        </button>
+                        <button
+                            onClick={async () => {
+                                setLoading(true);
+                                try {
+                                    const response = await fetch('/api/poscake/orders');
+                                    const data = await response.json();
+                                    if (data.error) throw new Error(data.error);
+
+                                    const newOrders = data.data.map((r: any) => ({
+                                        id: r.id,
+                                        address: r.address,
+                                        lat: 0, lng: 0, // Will be geocoded later
+                                        weight: r.weight || 1,
+                                        cod: r.cod || 0,
+                                        customerName: r.customerName,
+                                        status: 'pending'
+                                    }));
+
+                                    onOrdersImported(newOrders); // Assuming onOrdersImported is the correct callback
+                                    alert(`Đã import thành công ${newOrders.length} đơn hàng từ POSCake!`);
+                                } catch (error: any) {
+                                    alert('Lỗi import POSCake: ' + error.message);
+                                } finally {
+                                    setLoading(false);
+                                }
+                            }}
+                            disabled={loading}
+                            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                        >
+                            {/* Assuming Upload icon is available or needs to be imported */}
+                            {/* <Upload size={20} /> */}
+                            Import POSCake
                         </button>
                         <button
                             onClick={handleConfirmMapping}
