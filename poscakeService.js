@@ -5,6 +5,13 @@ dotenv.config();
 
 const POSCAKE_API_BASE = 'https://pos.pages.fm/api/v1';
 
+import axios from 'axios';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const POSCAKE_API_BASE = 'https://pos.pages.fm/api/v1';
+
 export const fetchPoscakeOrders = async (shopId, accessToken) => {
     try {
         // Default to env vars if not provided
@@ -17,10 +24,10 @@ export const fetchPoscakeOrders = async (shopId, accessToken) => {
 
         // Fetch orders from POSCake
         // Documentation: GET /shops/{SHOP_ID}/orders
-        // We need to pass access_token as a query parameter
+        // Research indicates 'api_key' is the common param for Pancake POS
         const response = await axios.get(`${POSCAKE_API_BASE}/shops/${targetShopId}/orders`, {
             params: {
-                access_token: token,
+                api_key: token,
                 page_size: 50, // Fetch up to 50 orders
                 page_number: 1
             }
@@ -45,10 +52,15 @@ export const fetchPoscakeOrders = async (shopId, accessToken) => {
                 status: order.status_name || 'New'
             }));
         } else {
-            throw new Error('Failed to fetch orders from POSCake');
+            console.error('POSCake API Failed Response:', response.data);
+            throw new Error(response.data.message || 'Failed to fetch orders from POSCake (Success=false)');
         }
     } catch (error) {
         console.error('POSCake API Error:', error.message);
+        if (error.response) {
+            console.error('POSCake API Error Data:', error.response.data);
+            throw new Error(error.response.data?.message || `API Error: ${error.response.status} ${error.response.statusText}`);
+        }
         throw error;
     }
 };
