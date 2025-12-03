@@ -217,6 +217,87 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
                             Tải file mẫu
                         </button>
                     </div>
+
+                    <div className="mt-8 pt-6 border-t border-slate-700">
+                        <h4 className="text-gray-400 text-sm font-bold mb-4 uppercase">Hoặc nhập từ Lark Base</h4>
+                        <div className="flex flex-col md:flex-row gap-3 justify-center items-end">
+                            <div className="text-left">
+                                <label className="text-xs text-gray-500 block mb-1">Base ID (App Token)</label>
+                                <input
+                                    type="text"
+                                    id="larkBaseId"
+                                    placeholder="bas..."
+                                    className="bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white text-sm w-32 focus:border-brand-teal outline-none"
+                                />
+                            </div>
+                            <div className="text-left">
+                                <label className="text-xs text-gray-500 block mb-1">Table ID</label>
+                                <input
+                                    type="text"
+                                    id="larkTableId"
+                                    placeholder="tbl..."
+                                    className="bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white text-sm w-32 focus:border-brand-teal outline-none"
+                                />
+                            </div>
+                            <button
+                                onClick={async () => {
+                                    const baseId = (document.getElementById('larkBaseId') as HTMLInputElement).value;
+                                    const tableId = (document.getElementById('larkTableId') as HTMLInputElement).value;
+
+                                    if (!baseId || !tableId) {
+                                        setErrorMsg('Vui lòng nhập Base ID và Table ID');
+                                        return;
+                                    }
+
+                                    setErrorMsg('');
+                                    try {
+                                        const res = await fetch(`/api/lark/orders?baseId=${baseId}&tableId=${tableId}`);
+                                        const json = await res.json();
+
+                                        if (json.error) throw new Error(json.error);
+
+                                        const items = json.data; // Array of { fields: {...}, id: ... }
+                                        if (!items || items.length === 0) {
+                                            setErrorMsg('Không tìm thấy dữ liệu trong bảng này.');
+                                            return;
+                                        }
+
+                                        // Extract headers from all records to ensure we catch all fields
+                                        const allKeys = new Set<string>();
+                                        items.forEach((item: any) => {
+                                            Object.keys(item.fields).forEach(k => allKeys.add(k));
+                                        });
+                                        const headerRow = Array.from(allKeys);
+
+                                        const rawOrders: RawOrder[] = items.map((item: any, idx: number) => {
+                                            const raw: RawOrder = { id: `lark-${idx}` };
+                                            headerRow.forEach(h => {
+                                                const val = item.fields[h];
+                                                // Handle Lark specific field types if needed (e.g. array, object)
+                                                // For now convert everything to string
+                                                raw[h] = typeof val === 'object' ? JSON.stringify(val) : String(val || '');
+                                            });
+                                            return raw;
+                                        });
+
+                                        setHeaders(headerRow);
+                                        setParsedRows(rawOrders);
+                                        setFileName(`Lark Base: ${tableId}`);
+                                        suggestMapping(headerRow);
+                                        setStep(2);
+
+                                    } catch (err: any) {
+                                        console.error(err);
+                                        setErrorMsg('Lỗi kết nối Lark: ' + err.message);
+                                    }
+                                }}
+                                className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                                Import Lark
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
