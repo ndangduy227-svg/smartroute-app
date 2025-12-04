@@ -87,7 +87,19 @@ export const ReconciliationView: React.FC<ReconciliationViewProps> = ({ clusters
                             >
                                 <div>
                                     <h3 className="font-bold text-white text-lg">{cluster.name}</h3>
-                                    <p className="text-sm text-gray-400">{cluster.orders.length} đơn hàng - Tổng thu: {cluster.orders.reduce((sum, o) => sum + o.cod, 0).toLocaleString()} đ</p>
+                                    <div className="text-sm text-gray-400 mt-1 flex gap-4">
+                                        <span>{cluster.orders.length} đơn hàng</span>
+                                        <span className="text-brand-teal font-bold">Thu hộ (COD): {cluster.orders.reduce((sum, o) => sum + o.cod, 0).toLocaleString()} đ</span>
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-1">
+                                        Thực thu từ Shipper: <span className="text-white font-mono font-bold">
+                                            {(
+                                                cluster.orders.reduce((sum, o) => sum + o.cod, 0) -
+                                                (cluster.estimatedCost + cluster.extraFee + (cluster.stopFee || 0)) +
+                                                (cluster.deduction || 0)
+                                            ).toLocaleString()} đ
+                                        </span>
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <div className={`px-3 py-1 rounded-full text-xs font-bold ${cluster.isCompleted ? 'bg-green-900 text-green-400' : 'bg-yellow-900 text-yellow-400'}`}>
@@ -101,6 +113,39 @@ export const ReconciliationView: React.FC<ReconciliationViewProps> = ({ clusters
 
                             {expandedClusterId === cluster.id && (
                                 <div className="p-4 border-t border-slate-700 bg-slate-800/50">
+                                    {/* Financial Breakdown */}
+                                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6 bg-slate-900 p-4 rounded-lg border border-slate-700">
+                                        <div>
+                                            <div className="text-xs text-gray-500">Tổng COD</div>
+                                            <div className="text-lg font-bold text-brand-teal">{cluster.orders.reduce((sum, o) => sum + o.cod, 0).toLocaleString()} đ</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-xs text-gray-500">Phí Ship (Cơ bản)</div>
+                                            <div className="text-white font-mono">{cluster.estimatedCost.toLocaleString()} đ</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-xs text-gray-500">Phụ phí + Điểm dừng</div>
+                                            <div className="text-white font-mono">{(cluster.extraFee + (cluster.stopFee || 0)).toLocaleString()} đ</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-xs text-gray-500">Trừ phí</div>
+                                            <div className="text-red-400 font-mono">-{(cluster.deduction || 0).toLocaleString()} đ</div>
+                                        </div>
+                                        <div className="border-l border-slate-700 pl-4">
+                                            <div className="text-xs text-brand-purple font-bold">TỔNG THU TỪ SHIPPER</div>
+                                            <div className="text-xl font-bold text-white">
+                                                {(
+                                                    cluster.orders.reduce((sum, o) => sum + o.cod, 0) -
+                                                    (cluster.estimatedCost + cluster.extraFee + (cluster.stopFee || 0)) +
+                                                    (cluster.deduction || 0)
+                                                ).toLocaleString()} đ
+                                            </div>
+                                            <div className="text-[10px] text-gray-500 italic">
+                                                = COD - (Ship + Phụ + Stop) + Trừ
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-sm text-left text-gray-300">
                                             <thead className="text-xs uppercase bg-slate-800 text-gray-400">
@@ -145,9 +190,9 @@ export const ReconciliationView: React.FC<ReconciliationViewProps> = ({ clusters
                                                         <td className="px-4 py-3">
                                                             <select
                                                                 className={`bg-slate-900 border border-slate-600 rounded px-2 py-1 text-xs font-bold ${order.status === OrderStatus.COMPLETED ? 'text-green-400' :
-                                                                        order.status === OrderStatus.FAILED ? 'text-red-400' :
-                                                                            order.status === OrderStatus.CHANGED ? 'text-yellow-400' :
-                                                                                'text-gray-400'
+                                                                    order.status === OrderStatus.FAILED ? 'text-red-400' :
+                                                                        order.status === OrderStatus.CHANGED ? 'text-yellow-400' :
+                                                                            'text-gray-400'
                                                                     }`}
                                                                 value={order.status}
                                                                 onChange={(e) => handleStatusChange(cluster.id, order.id, e.target.value as OrderStatus)}

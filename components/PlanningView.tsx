@@ -716,6 +716,9 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                                             onChange={(e) => handleConfigChange('trackAsiaApiKey', e.target.value)}
                                             placeholder="Nhập TrackAsia Key"
                                         />
+                                        <p className="text-xs text-gray-500 mt-1 col-span-2">
+                                            Chưa có Key? <a href="https://track-asia.com/" target="_blank" rel="noreferrer" className="text-brand-teal hover:underline">Đăng ký miễn phí tại Track Asia</a>.
+                                        </p>
                                         <button
                                             onClick={handleCheckApiKey}
                                             className={`px-3 py-1 rounded text-xs font-bold ${apiKeyStatus === 'VALID' ? 'bg-green-600 text-white' :

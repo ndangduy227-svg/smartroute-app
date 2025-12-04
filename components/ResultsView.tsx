@@ -28,19 +28,18 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
         onUpdateCluster({ ...selectedCluster, assignedShipperId: shipperId });
     };
 
-    const handleExtraFeeChange = (val: number) => {
-        if (!selectedCluster) return;
-        onUpdateCluster({ ...selectedCluster, extraFee: val });
-    };
+    const handleUpdateCost = (clusterId: string, field: 'extraFee' | 'stopFeeRate' | 'deduction', value: number) => {
+        const cluster = clusters.find(c => c.id === clusterId);
+        if (!cluster) return;
 
-    const handleStopFeeChange = (val: number) => {
-        if (!selectedCluster) return;
-        onUpdateCluster({ ...selectedCluster, stopFee: val });
-    };
+        const updates: Partial<Cluster> = { [field]: value };
 
-    const handleDeductionChange = (val: number) => {
-        if (!selectedCluster) return;
-        onUpdateCluster({ ...selectedCluster, deduction: val });
+        // Auto-calculate total stop fee if rate changes
+        if (field === 'stopFeeRate') {
+            updates.stopFee = value * cluster.orders.length;
+        }
+
+        onUpdateCluster({ ...cluster, ...updates });
     };
 
     const calculateTotalCod = (cluster: Cluster) => {
@@ -552,19 +551,23 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
                                                         type="number"
                                                         className="w-24 bg-slate-900 border border-slate-600 rounded px-1 py-0.5 text-right font-mono text-white text-sm"
                                                         value={selectedCluster.extraFee}
-                                                        onChange={(e) => handleExtraFeeChange(Number(e.target.value))}
+                                                        onChange={(e) => handleUpdateCost(selectedCluster.id, 'extraFee', Number(e.target.value))}
                                                         disabled={selectedCluster.isCompleted}
                                                     />
                                                 </div>
                                                 <div className="flex justify-between items-center text-sm">
-                                                    <span className="text-gray-400">Phí điểm dừng:</span>
-                                                    <input
-                                                        type="number"
-                                                        className="w-24 bg-slate-900 border border-slate-600 rounded px-1 py-0.5 text-right font-mono text-white text-sm"
-                                                        value={selectedCluster.stopFee || 0}
-                                                        onChange={(e) => handleStopFeeChange(Number(e.target.value))}
-                                                        disabled={selectedCluster.isCompleted}
-                                                    />
+                                                    <span className="text-gray-400">Phí điểm dừng (đ/điểm):</span>
+                                                    <div className="flex flex-col items-end">
+                                                        <input
+                                                            type="number"
+                                                            className="w-24 bg-slate-900 border border-slate-600 rounded px-1 py-0.5 text-right font-mono text-white text-sm"
+                                                            value={selectedCluster.stopFeeRate || 0}
+                                                            onChange={(e) => handleUpdateCost(selectedCluster.id, 'stopFeeRate', Number(e.target.value))}
+                                                            disabled={selectedCluster.isCompleted}
+                                                            placeholder="0"
+                                                        />
+                                                        <span className="text-[10px] text-gray-500">Tổng: {(selectedCluster.stopFee || 0).toLocaleString()} đ</span>
+                                                    </div>
                                                 </div>
                                                 <div className="flex justify-between items-center text-sm">
                                                     <span className="text-gray-400">Trừ phí:</span>
@@ -572,7 +575,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
                                                         type="number"
                                                         className="w-24 bg-slate-900 border border-slate-600 rounded px-1 py-0.5 text-right font-mono text-white text-sm"
                                                         value={selectedCluster.deduction || 0}
-                                                        onChange={(e) => handleDeductionChange(Number(e.target.value))}
+                                                        onChange={(e) => handleUpdateCost(selectedCluster.id, 'deduction', Number(e.target.value))}
                                                         disabled={selectedCluster.isCompleted}
                                                     />
                                                 </div>
