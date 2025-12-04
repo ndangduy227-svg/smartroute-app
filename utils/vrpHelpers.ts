@@ -1,5 +1,12 @@
 import { Order, Cluster, Coordinate, RouteConfig } from '../types';
 
+// Extend RouteConfig to include forceSingleVehicle
+declare module '../types' {
+    interface RouteConfig {
+        forceSingleVehicle?: boolean;
+    }
+}
+
 // --- CONSTANTS ---
 export const DISTRICT_LOCATIONS: { [key: string]: Coordinate } = {
     '1': { lat: 10.7756, lng: 106.7004 },
@@ -83,6 +90,81 @@ export const geocodeAddress = async (address: string, apiKey: string): Promise<C
     }
 };
 
+// --- POLYLINE HELPER FUNCTIONS ---
+
+function encodePolyline(coordinates: [number, number][], precision: number = 5): string {
+    let output = '';
+    let lastLat = 0;
+    let lastLng = 0;
+    const factor = Math.pow(10, precision);
+
+    coordinates.forEach(([lng, lat]) => {
+        const latVal = Math.round(lat * factor);
+        const lngVal = Math.round(lng * factor);
+
+        const dLat = latVal - lastLat;
+        const dLng = lngVal - lastLng;
+
+        [dLat, dLng].forEach(val => {
+            let num = val < 0 ? ~(val << 1) : (val << 1);
+            while (num >= 0x20) {
+                output += String.fromCharCode((0x20 | (num & 0x1f)) + 63);
+                num >>= 5;
+            }
+            output += String.fromCharCode(num + 63);
+        });
+
+        lastLat = latVal;
+        lastLng = lngVal;
+    });
+
+    return output;
+}
+
+function decodePolyline(str: string, precision: number = 5): [number, number][] {
+    let index = 0,
+        lat = 0,
+        lng = 0,
+        coordinates: [number, number][] = [],
+        shift = 0,
+        result = 0,
+        byte = null,
+        latitude_change,
+        longitude_change,
+        factor = Math.pow(10, precision);
+
+    while (index < str.length) {
+        byte = null;
+        shift = 0;
+        result = 0;
+
+        do {
+            byte = str.charCodeAt(index++) - 63;
+            result |= (byte & 0x1f) << shift;
+            shift += 5;
+        } while (byte >= 0x20);
+
+        latitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
+
+        shift = result = 0;
+
+        do {
+            byte = str.charCodeAt(index++) - 63;
+            result |= (byte & 0x1f) << shift;
+            shift += 5;
+        } while (byte >= 0x20);
+
+        longitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
+
+        lat += latitude_change;
+        lng += longitude_change;
+
+        coordinates.push([lng / factor, lat / factor]);
+    }
+
+    return coordinates;
+}
+
 // --- VRP SOLVER ---
 
 export const solveVRP = async (orders: Order[], origin: Coordinate, apiKey: string, config: RouteConfig): Promise<Cluster[]> => {
@@ -104,7 +186,8 @@ export const solveVRP = async (orders: Order[], origin: Coordinate, apiKey: stri
             id: jobId,
             location: [order.coordinates!.lng, order.coordinates!.lat],
             service: 300, // 5 minutes per stop
-            delivery: [1] // Consumes 1 unit of capacity
+            // Only add delivery amount if NOT forcing single vehicle (TSP mode)
+            ...(config.forceSingleVehicle ? {} : { delivery: [1] })
         };
     });
 
@@ -114,11 +197,12 @@ export const solveVRP = async (orders: Order[], origin: Coordinate, apiKey: stri
     // USER REQUEST: Max Stops Constraint Strategy
     // 1. User inputs Max_Stops (config.maxOrdersPerShipper)
     // 2. We generate MORE vehicles than needed (e.g. * 1.5) to let the algorithm choose the optimal number.
-    const maxStops = config.maxOrdersPerShipper;
+    // If forceSingleVehicle is true, we MUST ensure the single vehicle has enough capacity for ALL orders.
+    const maxStops = config.forceSingleVehicle ? Math.max(config.maxOrdersPerShipper, orders.length) : config.maxOrdersPerShipper;
     const minVehicles = Math.ceil(orders.length / maxStops);
 
-    // Generate 1.5x needed vehicles (minimum 5 to be safe)
-    const vehicleCount = Math.max(Math.ceil(minVehicles * 1.5), 5);
+    // Generate 1.5x needed vehicles (minimum 5 to be safe), UNLESS forced to single vehicle
+    const vehicleCount = config.forceSingleVehicle ? 1 : Math.max(Math.ceil(minVehicles * 1.5), 5);
 
     console.log(`VRP Setup: ${orders.length} orders, MaxStops=${maxStops}. Generating ${vehicleCount} vehicles.`);
 
@@ -130,7 +214,8 @@ export const solveVRP = async (orders: Order[], origin: Coordinate, apiKey: stri
             start: [origin.lng, origin.lat],
             // end: null, // REMOVED: To ensure Open Route (default behavior if omitted in some engines, or use specific flag if needed)
             // Actually, for TrackAsia/VROOM, omitting end usually means "end anywhere" (Open Route)
-            capacity: [maxStops], // Strict Max Stops constraint
+            // Only add capacity if NOT forcing single vehicle
+            ...(config.forceSingleVehicle ? {} : { capacity: [maxStops] }),
             profile: "car", // Revert to 'car' as 'motorcycle' is not supported by this VRP API endpoint
         });
     }
@@ -210,21 +295,119 @@ export const solveVRP = async (orders: Order[], origin: Coordinate, apiKey: stri
         });
 
         if (unassignedOrders.length > 0) {
-            console.warn(`[VRP] ${unassignedOrders.length} orders were unassigned.`);
-            parsedRoutes.push({
-                id: `CL-UNASSIGNED-${Date.now()}`,
-                name: `Không thể giao (${unassignedOrders.length})`,
-                orders: unassignedOrders,
-                totalDistanceKm: 0,
-                estimatedCost: 0,
-                extraFee: 0,
-                assignedShipperId: null,
-                isCompleted: false,
-                createdAt: Date.now(),
-                color: '#CBD5E0', // Grey for unassigned
-                centroid: origin,
-                geometry: '' // No geometry
-            });
+            console.warn(`[VRP] ${unassignedOrders.length} orders were unassigned. Reasons:`, data.unassigned.map((u: any) => u.description || u.reason || 'Unknown'));
+
+            // IF FORCE SINGLE VEHICLE: We must NOT leave them behind.
+            // We will append them to the main route (if exists) or create a new one if none.
+            // Since VRP failed to route them (likely due to map data issues or accessibility),
+            // we will just draw a STRAIGHT LINE to them from the last point.
+
+            // IF FORCE SINGLE VEHICLE: We must NOT leave them behind.
+            // We will append them to the main route (if exists) or create a new one if none.
+
+            if (config.forceSingleVehicle) {
+                console.log(`[VRP] ForceSingleVehicle active. Processing ${unassignedOrders.length} unassigned orders.`);
+
+                // 1. Handle Multiple Routes (Merge them first if needed)
+                let mainRoute = parsedRoutes[0];
+
+                if (parsedRoutes.length > 1) {
+                    console.warn(`[VRP] Expected 1 route but got ${parsedRoutes.length}. Merging...`);
+                    // Sort by size (descending) to find the "main" chunk, or just sequence them?
+                    // Ideally we sequence them. But we don't know the order.
+                    // Let's just append subsequent routes to the first one.
+
+                    for (let i = 1; i < parsedRoutes.length; i++) {
+                        const nextRoute = parsedRoutes[i];
+
+                        // Connect mainRoute END to nextRoute START
+                        const currentPath = decodePolyline(mainRoute.geometry);
+                        const nextPath = decodePolyline(nextRoute.geometry);
+
+                        // Add straight line connection (implicitly done by just appending points)
+                        // Note: decodePolyline returns [lng, lat]
+
+                        // Append orders
+                        mainRoute.orders.push(...nextRoute.orders);
+
+                        // Append geometry
+                        // We just concat the paths. The renderer will draw a straight line between the gap.
+                        const combinedPath = [...currentPath, ...nextPath];
+                        mainRoute.geometry = encodePolyline(combinedPath);
+
+                        // Update metrics
+                        mainRoute.totalDistanceKm += nextRoute.totalDistanceKm;
+                        mainRoute.estimatedCost += nextRoute.estimatedCost;
+                    }
+
+                    // Remove merged routes
+                    parsedRoutes.splice(1);
+                }
+
+                if (!mainRoute) {
+                    // Should not happen if we have unassigned orders but no routes?
+                    // If NO routes were created, create a dummy one.
+                    mainRoute = {
+                        id: `CL-VRP-FORCED-${Date.now()}`,
+                        name: `Chuyến 1`,
+                        orders: [],
+                        totalDistanceKm: 0,
+                        estimatedCost: 0,
+                        extraFee: 0,
+                        assignedShipperId: null,
+                        isCompleted: false,
+                        createdAt: Date.now(),
+                        color: clusterColors[0],
+                        centroid: origin,
+                        geometry: ''
+                    };
+                    parsedRoutes.push(mainRoute);
+                }
+
+                // 2. Append Unassigned Orders
+                // Get the last coordinate of the current main route
+                let lastPoint: [number, number] | null = null;
+
+                // Need to decode again because we might have merged above
+                let currentPath = decodePolyline(mainRoute.geometry);
+
+                if (currentPath.length > 0) {
+                    lastPoint = currentPath[currentPath.length - 1];
+                } else {
+                    lastPoint = [origin.lng, origin.lat];
+                    currentPath.push(lastPoint); // Start at origin
+                }
+
+                // Append straight lines to unassigned orders
+                unassignedOrders.forEach(o => {
+                    if (o.coordinates) {
+                        const pt: [number, number] = [o.coordinates.lng, o.coordinates.lat];
+                        currentPath.push(pt);
+                        mainRoute.orders.push(o);
+                    }
+                });
+
+                // Re-encode the full path
+                mainRoute.geometry = encodePolyline(currentPath);
+
+                console.log(`[VRP] Merged unassigned orders. New path length: ${currentPath.length}`);
+
+            } else {
+                parsedRoutes.push({
+                    id: `CL-UNASSIGNED-${Date.now()}`,
+                    name: `Không thể giao (${unassignedOrders.length})`,
+                    orders: unassignedOrders,
+                    totalDistanceKm: 0,
+                    estimatedCost: 0,
+                    extraFee: 0,
+                    assignedShipperId: null,
+                    isCompleted: false,
+                    createdAt: Date.now(),
+                    color: '#CBD5E0', // Grey for unassigned
+                    centroid: origin,
+                    geometry: '' // No geometry
+                });
+            }
         }
     }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Cluster, Shipper, OrderStatus, Order } from '../types';
+import { Cluster, Shipper, OrderStatus, Order, Coordinate } from '../types';
 import { TrackAsiaMap } from './TrackAsiaMap';
 import { solveVRP } from '../utils/vrpHelpers';
 
@@ -10,10 +10,12 @@ interface ResultsViewProps {
     onComplete: (completedClusters: Cluster[]) => void;
     onUpdateCluster: (cluster: Cluster) => void;
     onUpdateClusters: (clusters: Cluster[]) => void;
+    onUpdateClusters: (clusters: Cluster[]) => void;
     apiKey: string;
+    warehouse: Coordinate | null;
 }
 
-export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, onComplete, onUpdateCluster, onUpdateClusters, apiKey }) => {
+export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, onComplete, onUpdateCluster, onUpdateClusters, apiKey, warehouse }) => {
     const [selectedClusterId, setSelectedClusterId] = useState<string | null>(clusters[0]?.id || null);
     const [viewMode, setViewMode] = useState<'MAP' | 'DETAILS' | 'KANBAN'>('MAP');
     const [isOptimizing, setIsOptimizing] = useState(false);
@@ -112,11 +114,29 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
         // 3. Update State
         if (sourceClusterId === targetClusterId) {
             // Single cluster update
-            onUpdateCluster({ ...sourceCluster, orders: newTargetOrders });
+            onUpdateCluster({
+                ...sourceCluster,
+                orders: newTargetOrders,
+                geometry: '', // Clear geometry as it is now invalid
+                totalDistanceKm: 0,
+                estimatedCost: 0
+            });
         } else {
             // Multi cluster update
-            const newSourceCluster = { ...sourceCluster, orders: newSourceOrders };
-            const newTargetCluster = { ...targetCluster, orders: newTargetOrders };
+            const newSourceCluster = {
+                ...sourceCluster,
+                orders: newSourceOrders,
+                geometry: '', // Clear geometry
+                totalDistanceKm: 0,
+                estimatedCost: 0
+            };
+            const newTargetCluster = {
+                ...targetCluster,
+                orders: newTargetOrders,
+                geometry: '', // Clear geometry
+                totalDistanceKm: 0,
+                estimatedCost: 0
+            };
             onUpdateClusters([newSourceCluster, newTargetCluster]);
         }
     };
@@ -147,10 +167,8 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
 
         setIsOptimizing(true);
         try {
-            // Use the first order's location or the original centroid as origin if possible, 
-            // but ideally we should have the warehouse location. 
-            // For now, we'll use the cluster's current centroid or the first order.
-            const origin = cluster.centroid;
+            // Use the warehouse location if available, otherwise fallback to cluster centroid (risky)
+            const origin = warehouse || cluster.centroid;
 
             // Config for VRP (reusing defaults or we should pass config prop)
             const config = {
@@ -161,7 +179,8 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
                 maxClusters: 1,
                 currency: 'VND' as const,
                 maxKmPerShipper: 500,
-                trackAsiaApiKey: apiKey
+                trackAsiaApiKey: apiKey,
+                forceSingleVehicle: true // Force 1 vehicle to ensure single route output
             };
 
             const newRoutes = await solveVRP(cluster.orders, origin, apiKey, config);
@@ -201,7 +220,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
                     orders: mergedOrders,
                     totalDistanceKm: totalDistance,
                     estimatedCost: totalCost,
-                    geometry: mainRoute.geometry // Visual compromise
+                    geometry: mainRoute.geometry // Should be the full geometry now
                 });
                 alert(`Đã tối ưu lại chuyến ${cluster.name}!`);
             }
