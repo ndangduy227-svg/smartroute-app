@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 interface UserGuideProps {
     isOpen: boolean;
@@ -6,90 +6,110 @@ interface UserGuideProps {
 }
 
 export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
-    const [step, setStep] = useState(0);
-
     if (!isOpen) return null;
 
-    const guides = [
-        {
-            title: "1. Nhập Đơn Hàng (Import)",
-            content: "Tải file Excel mẫu về, điền thông tin đơn hàng (Tên, SĐT, Địa chỉ, COD) và upload lên hệ thống. Hệ thống sẽ tự động nhận diện các cột dữ liệu.",
-            icon: (
-                <svg className="w-16 h-16 text-brand-teal mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-            )
-        },
-        {
-            title: "2. Lập Kế Hoạch (Planning)",
-            content: "Chọn kho hàng (điểm bắt đầu), cấu hình số lượng đơn tối đa cho mỗi shipper. Bấm 'Tìm kiếm' để xem vị trí trên bản đồ, sau đó bấm 'Tạo tuyến đường tối ưu'.",
-            icon: (
-                <svg className="w-16 h-16 text-brand-purple mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0121 18.382V7.618a1 1 0 01-.553-.894L15 7m0 13V7" />
-                </svg>
-            )
-        },
-        {
-            title: "3. Kết Quả & In Ấn (Results)",
-            content: "Xem danh sách các chuyến xe đã được tối ưu. Bạn có thể xem chi tiết từng chuyến, gán tài xế và in Phiếu Giao Hàng (Manifest) khổ A4.",
-            icon: (
-                <svg className="w-16 h-16 text-blue-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-            )
-        }
-    ];
-
-    const nextStep = () => setStep((prev) => (prev + 1) % guides.length);
-    const prevStep = () => setStep((prev) => (prev - 1 + guides.length) % guides.length);
-
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl relative">
-                {/* Close Button */}
-                <button
-                    onClick={onClose}
-                    className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
-                >
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-
-                {/* Content */}
-                <div className="p-10 flex flex-col items-center text-center h-[400px] justify-center">
-                    <div className="transform transition-all duration-500 ease-in-out">
-                        {guides[step].icon}
-                    </div>
-                    <h2 className="text-3xl font-bold text-white mb-4">{guides[step].title}</h2>
-                    <p className="text-gray-300 text-lg leading-relaxed max-w-lg">
-                        {guides[step].content}
-                    </p>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-center items-center p-4">
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
+                <div className="p-6 border-b border-slate-700 flex justify-between items-center sticky top-0 bg-slate-900 z-10">
+                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                        <span className="text-brand-teal">SmartRoute</span> Hướng Dẫn Sử Dụng
+                    </h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white p-2">
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
                 </div>
 
-                {/* Navigation */}
-                <div className="bg-slate-800 p-6 flex justify-between items-center border-t border-slate-700">
-                    <button
-                        onClick={prevStep}
-                        className="px-4 py-2 text-gray-400 hover:text-white flex items-center gap-2"
-                    >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                        Trước
-                    </button>
+                <div className="p-8 space-y-12">
+                    {/* Section 1: Import */}
+                    <section>
+                        <h3 className="text-xl font-bold text-brand-purple mb-4 flex items-center gap-2">
+                            1. Nhập Đơn Hàng (Import)
+                        </h3>
+                        <div className="space-y-4 text-gray-300">
+                            <p>Bạn có 3 cách để nhập đơn hàng vào hệ thống:</p>
+                            <ul className="list-disc pl-6 space-y-2">
+                                <li>
+                                    <strong className="text-white">File Excel/CSV:</strong> Kéo thả file `.xlsx` hoặc `.csv` vào khung upload.
+                                </li>
+                                <li>
+                                    <strong className="text-white">Google Sheet (App Script):</strong> Nhập URL Web App của Google Apps Script để lấy dữ liệu JSON trực tiếp từ Sheet.
+                                </li>
+                                <li>
+                                    <strong className="text-white">Lark Base / POSCake:</strong> Kết nối qua API (yêu cầu Token/Key).
+                                </li>
+                            </ul>
+                            <div className="bg-slate-800 p-4 rounded-lg border-l-4 border-brand-teal">
+                                <p className="text-sm"><strong>Lưu ý:</strong> Sau khi nhập dữ liệu, bạn cần thực hiện bước <strong>Ánh xạ cột</strong> để hệ thống hiểu đâu là Tên khách, Địa chỉ, SĐT, COD, v.v.</p>
+                            </div>
+                        </div>
+                    </section>
 
-                    <div className="flex gap-2">
-                        {guides.map((_, i) => (
-                            <div
-                                key={i}
-                                className={`w-2.5 h-2.5 rounded-full transition-all ${i === step ? 'bg-brand-teal scale-125' : 'bg-slate-600'}`}
-                            />
-                        ))}
-                    </div>
+                    {/* Section 2: Planning */}
+                    <section>
+                        <h3 className="text-xl font-bold text-brand-purple mb-4 flex items-center gap-2">
+                            2. Lập Kế Hoạch & Tối Ưu (Planning)
+                        </h3>
+                        <div className="space-y-4 text-gray-300">
+                            <p>Tại đây bạn quản lý danh sách đơn hàng chờ giao:</p>
+                            <ul className="list-disc pl-6 space-y-2">
+                                <li><strong>Chọn đơn hàng:</strong> Sử dụng checkbox để chọn các đơn hàng muốn gộp chuyến. Có thể chọn tất cả hoặc lọc theo từ khóa.</li>
+                                <li><strong>Cấu hình:</strong> Nhập số lượng đơn tối đa/shipper, số km tối đa, v.v.</li>
+                                <li><strong>API Key:</strong> Nhập API Key của Track Asia để sử dụng tính năng bản đồ và tối ưu lộ trình.</li>
+                            </ul>
+                            <p>Nhấn nút <strong className="text-brand-teal">Tự Động Phân Tuyến (AI)</strong> để hệ thống tự động chia đơn cho các tài xế.</p>
+                        </div>
+                    </section>
 
+                    {/* Section 3: Results */}
+                    <section>
+                        <h3 className="text-xl font-bold text-brand-purple mb-4 flex items-center gap-2">
+                            3. Kết Quả & Điều Phối (Results)
+                        </h3>
+                        <div className="space-y-4 text-gray-300">
+                            <p>Xem và chỉnh sửa các chuyến xe đã được tạo:</p>
+                            <ul className="list-disc pl-6 space-y-2">
+                                <li><strong>Bản đồ:</strong> Xem trực quan lộ trình của từng shipper.</li>
+                                <li><strong>Sắp xếp thủ công:</strong> Kéo thả đơn hàng giữa các chuyến xe để điều chỉnh.</li>
+                                <li><strong>Tài chính:</strong>
+                                    <ul className="list-circle pl-6 mt-1 text-sm text-gray-400">
+                                        <li>Nhập <strong>Phụ phí</strong> (cầu đường, bến bãi).</li>
+                                        <li>Nhập <strong>Phí điểm dừng</strong> (đơn giá/điểm), hệ thống tự nhân với số lượng đơn.</li>
+                                        <li>Nhập <strong>Trừ phí</strong> (nếu có).</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                            <p>Sau khi chốt số liệu, nhấn nút <strong className="text-green-400">Chốt & Chuyển Đối Soát</strong>.</p>
+                        </div>
+                    </section>
+
+                    {/* Section 4: Reconciliation */}
+                    <section>
+                        <h3 className="text-xl font-bold text-brand-purple mb-4 flex items-center gap-2">
+                            4. Đối Soát & Hoàn Tất (Reconciliation)
+                        </h3>
+                        <div className="space-y-4 text-gray-300">
+                            <p>Bước cuối cùng để xác nhận tiền thu từ Shipper:</p>
+                            <ul className="list-disc pl-6 space-y-2">
+                                <li><strong>Cập nhật trạng thái:</strong> Đánh dấu đơn hàng là Hoàn thành, Thất bại hoặc Thay đổi.</li>
+                                <li><strong>Sửa đổi:</strong> Có thể sửa lại tiền COD hoặc Ghi chú cho từng đơn nếu có sai sót thực tế.</li>
+                                <li><strong>Tổng kết tài chính:</strong> Xem bảng tính chi tiết:
+                                    <div className="mt-2 bg-slate-800 p-2 rounded text-mono text-sm">
+                                        Thu từ Shipper = Tổng COD - (Phí Ship + Phụ Phí + Phí Điểm Dừng) + Trừ Phí
+                                    </div>
+                                </li>
+                            </ul>
+                            <p>Nhấn <strong className="text-brand-teal">Hoàn tất đối soát</strong> để lưu vào Lịch sử.</p>
+                        </div>
+                    </section>
+                </div>
+
+                <div className="p-6 border-t border-slate-700 bg-slate-800 flex justify-end">
                     <button
-                        onClick={nextStep}
-                        className="px-4 py-2 text-brand-teal hover:text-teal-400 font-bold flex items-center gap-2"
+                        onClick={onClose}
+                        className="bg-brand-purple hover:bg-indigo-500 text-white font-bold py-2 px-6 rounded-lg transition-colors"
                     >
-                        {step === guides.length - 1 ? 'Quay lại đầu' : 'Tiếp theo'}
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                        Đã Hiểu
                     </button>
                 </div>
             </div>

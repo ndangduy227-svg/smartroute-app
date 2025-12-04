@@ -57,8 +57,9 @@ export interface Cluster {
   totalDistanceKm: number;
   estimatedCost: number;
   extraFee: number;
-  stopFee?: number; // New: Fee per stop
-  deduction?: number; // New: Deduction amount
+  stopFee?: number; // Total stop fee (calculated)
+  stopFeeRate?: number; // New: Fee per stop (input)
+  deduction?: number; // Deduction amount
   assignedShipperId: string | null;
   isCompleted: boolean;
   isReconciled?: boolean; // New: Finalized after reconciliation

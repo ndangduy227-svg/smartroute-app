@@ -24,7 +24,7 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
     const [fileName, setFileName] = useState<string>('');
     const [errorMsg, setErrorMsg] = useState<string>('');
     const [loading, setLoading] = useState(false);
-    const [pasteData, setPasteData] = useState(''); // New: Paste Data State
+    const [googleSheetUrl, setGoogleSheetUrl] = useState(''); // New: Google Sheet API URL
 
     const processFile = async (file: File) => {
         setErrorMsg('');
@@ -133,13 +133,50 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
         setStep(2);
     };
 
-    const handlePaste = () => {
-        if (!pasteData.trim()) {
-            setErrorMsg("Vui lòng dán dữ liệu vào ô trống.");
+    const handleGoogleSheetImport = async () => {
+        if (!googleSheetUrl.trim()) {
+            setErrorMsg("Vui lòng nhập URL Web App của Google Apps Script.");
             return;
         }
-        setFileName('Pasted Data');
-        parseCSV(pasteData);
+
+        setLoading(true);
+        setErrorMsg('');
+        try {
+            const response = await fetch(googleSheetUrl);
+            const data = await response.json();
+
+            if (!Array.isArray(data)) {
+                throw new Error("Dữ liệu trả về không phải là mảng JSON.");
+            }
+
+            if (data.length === 0) {
+                setErrorMsg("Không tìm thấy dữ liệu.");
+                return;
+            }
+
+            // Extract headers from the first object
+            const headerRow = Object.keys(data[0]);
+            setHeaders(headerRow);
+
+            const rawOrders: RawOrder[] = data.map((item: any, idx: number) => {
+                const raw: RawOrder = { id: `gsheet-${idx}` };
+                headerRow.forEach(h => {
+                    raw[h] = typeof item[h] === 'object' ? JSON.stringify(item[h]) : String(item[h] || '');
+                });
+                return raw;
+            });
+
+            setParsedRows(rawOrders);
+            setFileName('Google Sheet Data');
+            suggestMapping(headerRow);
+            setStep(2);
+
+        } catch (error: any) {
+            console.error(error);
+            setErrorMsg("Lỗi import Google Sheet: " + error.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const suggestMapping = (headerList: string[]) => {
@@ -417,23 +454,33 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
                 </div>
             )}
 
-            {/* Paste Area Section */}
+            {/* Google Sheet Import Section */}
             {step === 1 && (
                 <div className="mt-8 pt-6 border-t border-slate-700">
-                    <h4 className="text-gray-400 text-sm font-bold mb-4 uppercase">Hoặc dán trực tiếp từ Excel (Copy & Paste)</h4>
+                    <h4 className="text-gray-400 text-sm font-bold mb-4 uppercase">Hoặc nhập từ Google Sheet (App Script)</h4>
                     <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-                        <textarea
-                            className="w-full h-32 bg-slate-900 border border-slate-600 rounded p-3 text-white text-xs font-mono focus:border-brand-teal outline-none"
-                            placeholder="Copy dữ liệu từ Excel (bao gồm cả dòng tiêu đề) và dán vào đây..."
-                            value={pasteData}
-                            onChange={(e) => setPasteData(e.target.value)}
-                        />
-                        <div className="flex justify-end mt-2">
+                        <div className="text-xs text-gray-400 mb-4 flex items-start gap-2 bg-slate-900 p-3 rounded border border-slate-600">
+                            <svg className="w-4 h-4 text-green-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>
+                                <strong>Hướng dẫn:</strong> Tạo Google Apps Script trong Sheet của bạn, viết hàm <code>doGet</code> trả về JSON (`ContentService.createTextOutput(JSON.stringify(data))`), sau đó Deploy dưới dạng Web App và dán URL vào đây.
+                            </span>
+                        </div>
+                        <div className="flex gap-3">
+                            <input
+                                type="text"
+                                className="flex-1 bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white text-sm focus:border-brand-teal outline-none"
+                                placeholder="https://script.google.com/macros/s/.../exec"
+                                value={googleSheetUrl}
+                                onChange={(e) => setGoogleSheetUrl(e.target.value)}
+                            />
                             <button
-                                onClick={handlePaste}
-                                className="bg-brand-teal text-brand-dark font-bold py-2 px-6 rounded hover:bg-teal-400 transition-colors"
+                                onClick={handleGoogleSheetImport}
+                                disabled={loading}
+                                className="bg-green-600 text-white font-bold py-2 px-6 rounded hover:bg-green-500 transition-colors whitespace-nowrap flex items-center gap-2"
                             >
-                                Xử lý dữ liệu
+                                {loading ? 'Đang tải...' : 'Import Sheet'}
                             </button>
                         </div>
                     </div>
