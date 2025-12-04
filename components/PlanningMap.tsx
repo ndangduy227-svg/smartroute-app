@@ -16,27 +16,31 @@ export const PlanningMap: React.FC<PlanningMapProps> = ({ orders, warehouse, api
 
     // Initialize Map
     useEffect(() => {
-        if (!mapContainerRef.current) return;
+        if (!mapContainerRef.current || !apiKey) return;
 
-        const map = new trackasiagl.Map({
-            container: mapContainerRef.current,
-            style: `https://maps.track-asia.com/styles/v1/streets.json?key=${apiKey}`,
-            center: [106.694945, 10.769034], // HCM Default
-            zoom: 12
-        });
+        try {
+            const map = new trackasiagl.Map({
+                container: mapContainerRef.current,
+                style: `https://maps.track-asia.com/styles/v1/streets.json?key=${apiKey}`,
+                center: [106.694945, 10.769034], // HCM Default
+                zoom: 12
+            });
 
-        map.addControl(new trackasiagl.NavigationControl(), 'top-right');
-        mapRef.current = map;
+            map.addControl(new trackasiagl.NavigationControl(), 'top-right');
+            mapRef.current = map;
 
-        return () => {
-            map.remove();
-        };
+            return () => {
+                map.remove();
+            };
+        } catch (error) {
+            console.error("Error initializing map:", error);
+        }
     }, [apiKey]);
 
     // Update Markers
     useEffect(() => {
         const map = mapRef.current;
-        if (!map) return;
+        if (!map || !apiKey) return;
 
         const updateMarkers = () => {
             // Clear existing markers
@@ -99,7 +103,23 @@ export const PlanningMap: React.FC<PlanningMapProps> = ({ orders, warehouse, api
             map.on('load', updateMarkers);
         }
 
-    }, [orders, warehouse]);
+    }, [orders, warehouse, apiKey]);
+
+    if (!apiKey) {
+        return (
+            <div className="w-full h-full rounded-xl overflow-hidden relative border border-slate-700 shadow-inner bg-slate-800 flex flex-col items-center justify-center text-center p-6">
+                <div className="w-16 h-16 bg-slate-700 rounded-full flex items-center justify-center mb-4">
+                    <svg className="w-8 h-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0121 18.382V7.618a1 1 0 01-.553-.894L15 7m0 13V7" />
+                    </svg>
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2">Chưa kết nối bản đồ</h3>
+                <p className="text-gray-400 text-sm max-w-xs">
+                    Vui lòng nhập TrackAsia API Key để hiển thị bản đồ và tối ưu tuyến đường.
+                </p>
+            </div>
+        );
+    }
 
     return (
         <div ref={mapContainerRef} className="w-full h-full rounded-xl overflow-hidden relative border border-slate-700 shadow-inner" />

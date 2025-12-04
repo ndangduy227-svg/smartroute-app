@@ -19,7 +19,7 @@ interface PlanningViewProps {
 // Helper to calculate distance between two points (Haversine formula)
 // MOVED TO utils/vrpHelpers.ts
 
-export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, onClustersGenerated, apiKey, setApiKey }) => {
+export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, onClustersGenerated, apiKey, setApiKey, warehouse, setWarehouse }) => {
     // Config State
     const [config, setConfig] = useState<RouteConfig>({
         startPoints: [],
@@ -36,6 +36,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
     const [showConfirmModal, setShowConfirmModal] = useState(false); // New: Confirmation Modal State
     const [showApiGuide, setShowApiGuide] = useState(false); // New: API Guide Modal
     const [showTour, setShowTour] = useState(false); // New: Tour State
+    const [showApiKeyModal, setShowApiKeyModal] = useState(false); // New: Prompt for API Key on load
 
     const tourSteps: TourStep[] = [
         {
@@ -63,6 +64,11 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
     // Sync prop changes to local config (optional, but good for consistency)
     useEffect(() => {
         setConfig(prev => ({ ...prev, trackAsiaApiKey: apiKey }));
+        if (!apiKey) {
+            setShowApiKeyModal(true);
+        } else {
+            setApiKeyStatus('VALID'); // Assume valid if present, or let the check validate it
+        }
     }, [apiKey]);
 
     const handleConfigChange = (field: keyof RouteConfig, value: any) => {
@@ -813,9 +819,9 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                     <button
                         id="tour-optimize"
                         onClick={handleStartOptimization}
-                        disabled={isOptimizing || selectedOrderIds.size === 0 || !startPointCoords}
-                        title={!startPointCoords ? "Vui lòng xác thực địa chỉ kho hàng trước" : ""}
-                        className={`w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-lg ${isOptimizing || selectedOrderIds.size === 0 || !startPointCoords
+                        disabled={isOptimizing || selectedOrderIds.size === 0 || !warehouse}
+                        title={!warehouse ? "Vui lòng xác thực địa chỉ kho hàng trước" : ""}
+                        className={`w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-lg ${isOptimizing || selectedOrderIds.size === 0 || !warehouse
                             ? 'bg-slate-700 text-gray-500 cursor-not-allowed'
                             : 'bg-gradient-to-r from-brand-teal to-teal-400 text-brand-dark shadow-teal-500/30 hover:shadow-teal-500/50 hover:scale-[1.01]'
                             }`}
@@ -925,6 +931,58 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                             >
                                 Đã hiểu
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* API Key Prompt Modal (On Load) */}
+            {showApiKeyModal && !apiKey && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
+                    <div className="bg-slate-900 border border-brand-teal/30 rounded-2xl w-full max-w-md shadow-[0_0_50px_rgba(45,225,194,0.1)] relative overflow-hidden">
+                        {/* Decorative background */}
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-brand-teal to-transparent"></div>
+
+                        <div className="p-8 text-center">
+                            <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-700">
+                                <span className="text-3xl">🔑</span>
+                            </div>
+
+                            <h3 className="text-2xl font-bold text-white mb-2">Kết nối TrackAsia</h3>
+                            <p className="text-gray-400 mb-6 text-sm">
+                                Để sử dụng tính năng bản đồ và tối ưu hóa tuyến đường, vui lòng nhập API Key của bạn.
+                            </p>
+
+                            <div className="space-y-4">
+                                <input
+                                    type="text"
+                                    className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white text-center font-mono focus:border-brand-teal focus:ring-1 focus:ring-brand-teal outline-none transition-all"
+                                    placeholder="Nhập API Key tại đây..."
+                                    value={config.trackAsiaApiKey || ''}
+                                    onChange={(e) => handleConfigChange('trackAsiaApiKey', e.target.value)}
+                                />
+
+                                <button
+                                    onClick={() => {
+                                        if (config.trackAsiaApiKey) {
+                                            handleCheckApiKey();
+                                            setShowApiKeyModal(false);
+                                        } else {
+                                            alert("Vui lòng nhập API Key!");
+                                        }
+                                    }}
+                                    className="w-full py-3 bg-brand-teal hover:bg-teal-400 text-brand-dark font-bold rounded-xl transition-all shadow-lg shadow-teal-500/20"
+                                >
+                                    Bắt đầu sử dụng
+                                </button>
+
+                                <button
+                                    onClick={() => setShowApiGuide(true)}
+                                    className="text-sm text-gray-500 hover:text-brand-teal underline"
+                                >
+                                    Tôi chưa có Key? Xem hướng dẫn
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
