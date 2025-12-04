@@ -2,6 +2,12 @@
 import React, { useState, useCallback } from 'react';
 import { RawOrder, Order, OrderStatus, FieldMapping } from '../types';
 import { MOCK_ORDERS_CSV } from '../constants';
+import { ImportGuideModal, GuideType } from './ImportGuideModal';
+// Assets
+import larkLogo from '../assets/lark_logo.png';
+import pancakeLogo from '../assets/pancake_logo.png';
+import gsheetLogo from '../assets/gsheet_logo.png';
+
 // @ts-ignore
 import * as XLSX from 'xlsx';
 
@@ -24,7 +30,14 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
     const [fileName, setFileName] = useState<string>('');
     const [errorMsg, setErrorMsg] = useState<string>('');
     const [loading, setLoading] = useState(false);
-    const [googleSheetUrl, setGoogleSheetUrl] = useState(''); // New: Google Sheet API URL
+
+    // API Inputs
+    const [googleSheetUrl, setGoogleSheetUrl] = useState('');
+    const [larkConfig, setLarkConfig] = useState({ appId: '', appSecret: '', baseId: '', tableId: '' });
+    const [posCakeToken, setPosCakeToken] = useState('');
+
+    // Guide Modal State
+    const [guideType, setGuideType] = useState<GuideType | null>(null);
 
     const processFile = async (file: File) => {
         setErrorMsg('');
@@ -454,37 +467,115 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
                 </div>
             )}
 
-            {/* Google Sheet Import Section */}
+            {/* --- NEW IMPORT UI --- */}
             {step === 1 && (
-                <div className="mt-8 pt-6 border-t border-slate-700">
-                    <h4 className="text-gray-400 text-sm font-bold mb-4 uppercase">Hoặc nhập từ Google Sheet (App Script)</h4>
-                    <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-                        <div className="text-xs text-gray-400 mb-4 flex items-start gap-2 bg-slate-900 p-3 rounded border border-slate-600">
-                            <svg className="w-4 h-4 text-green-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span>
-                                <strong>Hướng dẫn:</strong> Tạo Google Apps Script trong Sheet của bạn, viết hàm <code>doGet</code> trả về JSON (`ContentService.createTextOutput(JSON.stringify(data))`), sau đó Deploy dưới dạng Web App và dán URL vào đây.
-                            </span>
+                <div className="mt-8 space-y-6">
+                    <h4 className="text-gray-400 text-sm font-bold uppercase border-b border-slate-700 pb-2">Kết nối nền tảng</h4>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Google Sheet Card */}
+                        <div className="bg-slate-800 rounded-xl border border-slate-700 p-5 hover:border-green-500/50 transition-all group relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <img src={gsheetLogo} alt="Google Sheet" className="w-24 h-24 object-contain" />
+                            </div>
+                            <div className="flex justify-between items-start mb-4 relative z-10">
+                                <img src={gsheetLogo} alt="Google Sheet" className="w-10 h-10 object-contain" />
+                                <button
+                                    onClick={() => setGuideType('GSHEET')}
+                                    className="text-xs font-bold text-green-400 hover:text-green-300 flex items-center gap-1 bg-green-900/30 px-2 py-1 rounded"
+                                >
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    Hướng dẫn
+                                </button>
+                            </div>
+                            <h5 className="text-white font-bold mb-2 relative z-10">Google Sheet</h5>
+                            <div className="relative z-10">
+                                <input
+                                    type="text"
+                                    className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white text-xs focus:border-green-500 outline-none mb-2"
+                                    placeholder="Dán URL Web App..."
+                                    value={googleSheetUrl}
+                                    onChange={(e) => setGoogleSheetUrl(e.target.value)}
+                                />
+                                <button
+                                    onClick={handleGoogleSheetImport}
+                                    disabled={loading}
+                                    className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded text-xs transition-colors"
+                                >
+                                    Import
+                                </button>
+                            </div>
                         </div>
-                        <div className="flex gap-3">
-                            <input
-                                type="text"
-                                className="flex-1 bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white text-sm focus:border-brand-teal outline-none"
-                                placeholder="https://script.google.com/macros/s/.../exec"
-                                value={googleSheetUrl}
-                                onChange={(e) => setGoogleSheetUrl(e.target.value)}
-                            />
-                            <button
-                                onClick={handleGoogleSheetImport}
-                                disabled={loading}
-                                className="bg-green-600 text-white font-bold py-2 px-6 rounded hover:bg-green-500 transition-colors whitespace-nowrap flex items-center gap-2"
-                            >
-                                {loading ? 'Đang tải...' : 'Import Sheet'}
-                            </button>
+
+                        {/* Lark Base Card */}
+                        <div className="bg-slate-800 rounded-xl border border-slate-700 p-5 hover:border-blue-500/50 transition-all group relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <img src={larkLogo} alt="Lark" className="w-24 h-24 object-contain" />
+                            </div>
+                            <div className="flex justify-between items-start mb-4 relative z-10">
+                                <img src={larkLogo} alt="Lark" className="w-10 h-10 object-contain" />
+                                <button
+                                    onClick={() => setGuideType('LARK')}
+                                    className="text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 bg-blue-900/30 px-2 py-1 rounded"
+                                >
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    Hướng dẫn
+                                </button>
+                            </div>
+                            <h5 className="text-white font-bold mb-2 relative z-10">Lark Base</h5>
+                            <div className="relative z-10 space-y-2">
+                                <button
+                                    onClick={() => alert("Tính năng đang phát triển")}
+                                    className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded text-xs transition-colors"
+                                >
+                                    Kết nối Lark
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* POSCake Card */}
+                        <div className="bg-slate-800 rounded-xl border border-slate-700 p-5 hover:border-brand-teal/50 transition-all group relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <img src={pancakeLogo} alt="POSCake" className="w-24 h-24 object-contain" />
+                            </div>
+                            <div className="flex justify-between items-start mb-4 relative z-10">
+                                <img src={pancakeLogo} alt="POSCake" className="w-10 h-10 object-contain" />
+                                <button
+                                    onClick={() => setGuideType('POSCAKE')}
+                                    className="text-xs font-bold text-brand-teal hover:text-teal-300 flex items-center gap-1 bg-teal-900/30 px-2 py-1 rounded"
+                                >
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    Hướng dẫn
+                                </button>
+                            </div>
+                            <h5 className="text-white font-bold mb-2 relative z-10">POSCake (Pancake)</h5>
+                            <div className="relative z-10">
+                                <input
+                                    type="password"
+                                    className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white text-xs focus:border-brand-teal outline-none mb-2"
+                                    placeholder="Access Token..."
+                                    value={posCakeToken}
+                                    onChange={(e) => setPosCakeToken(e.target.value)}
+                                />
+                                <button
+                                    onClick={() => alert("Tính năng đang phát triển")}
+                                    className="w-full bg-brand-teal hover:bg-teal-400 text-brand-dark font-bold py-2 rounded text-xs transition-colors"
+                                >
+                                    Kết nối
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Guide Modal */}
+            {guideType && (
+                <ImportGuideModal
+                    isOpen={!!guideType}
+                    onClose={() => setGuideType(null)}
+                    type={guideType}
+                />
             )}
 
             {step === 2 && (
