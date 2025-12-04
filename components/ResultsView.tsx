@@ -33,13 +33,23 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
         onUpdateCluster({ ...selectedCluster, extraFee: val });
     };
 
+    const handleStopFeeChange = (val: number) => {
+        if (!selectedCluster) return;
+        onUpdateCluster({ ...selectedCluster, stopFee: val });
+    };
+
+    const handleDeductionChange = (val: number) => {
+        if (!selectedCluster) return;
+        onUpdateCluster({ ...selectedCluster, deduction: val });
+    };
+
     const calculateTotalCod = (cluster: Cluster) => {
         return cluster.orders.reduce((sum, o) => sum + o.cod, 0);
     };
 
     const calculateNetCollection = (cluster: Cluster) => {
         const totalCod = calculateTotalCod(cluster);
-        const shippingFee = cluster.estimatedCost + cluster.extraFee;
+        const shippingFee = cluster.estimatedCost + cluster.extraFee + (cluster.stopFee || 0) - (cluster.deduction || 0);
         return totalCod - shippingFee;
     };
 
@@ -293,7 +303,6 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
                                         onDeleteCluster(cluster.id);
                                         if (selectedClusterId === cluster.id) setSelectedClusterId(null);
                                     }}
-                                    className="absolute top-2 right-2 p-1 text-gray-500 hover:text-red-500 hover:bg-slate-700 rounded opacity-0 group-hover:opacity-100 transition-all"
                                     title="Xóa chuyến xe"
                                 >
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -328,7 +337,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
                                 onClick={() => setViewMode('KANBAN')}
                                 className={`px-3 py-1 text-sm font-bold rounded ${viewMode === 'KANBAN' ? 'bg-brand-purple text-white' : 'text-gray-400 hover:text-white'}`}
                             >
-                                Kéo Thả (Kanban)
+                                Sắp xếp thủ công
                             </button>
                         </div>
 
@@ -534,7 +543,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
                                                     <span className="text-white font-mono">{selectedCluster.totalDistanceKm} km</span>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
-                                                    <span className="text-gray-400">Phí cơ bản:</span>
+                                                    <span className="text-gray-400">Phí ship:</span>
                                                     <span className="text-white font-mono">{selectedCluster.estimatedCost.toLocaleString()} đ</span>
                                                 </div>
                                                 <div className="flex justify-between items-center text-sm">
@@ -547,10 +556,30 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
                                                         disabled={selectedCluster.isCompleted}
                                                     />
                                                 </div>
+                                                <div className="flex justify-between items-center text-sm">
+                                                    <span className="text-gray-400">Phí điểm dừng:</span>
+                                                    <input
+                                                        type="number"
+                                                        className="w-24 bg-slate-900 border border-slate-600 rounded px-1 py-0.5 text-right font-mono text-white text-sm"
+                                                        value={selectedCluster.stopFee || 0}
+                                                        onChange={(e) => handleStopFeeChange(Number(e.target.value))}
+                                                        disabled={selectedCluster.isCompleted}
+                                                    />
+                                                </div>
+                                                <div className="flex justify-between items-center text-sm">
+                                                    <span className="text-gray-400">Trừ phí:</span>
+                                                    <input
+                                                        type="number"
+                                                        className="w-24 bg-slate-900 border border-slate-600 rounded px-1 py-0.5 text-right font-mono text-white text-sm"
+                                                        value={selectedCluster.deduction || 0}
+                                                        onChange={(e) => handleDeductionChange(Number(e.target.value))}
+                                                        disabled={selectedCluster.isCompleted}
+                                                    />
+                                                </div>
                                                 <div className="border-t border-slate-700 my-2"></div>
                                                 <div className="flex justify-between text-sm font-bold">
                                                     <span className="text-brand-purple">Tổng cước phí:</span>
-                                                    <span className="text-brand-purple font-mono">{(selectedCluster.estimatedCost + selectedCluster.extraFee).toLocaleString()} đ</span>
+                                                    <span className="text-brand-purple font-mono">{(selectedCluster.estimatedCost + selectedCluster.extraFee + (selectedCluster.stopFee || 0) - (selectedCluster.deduction || 0)).toLocaleString()} đ</span>
                                                 </div>
                                                 <div className="flex justify-between text-sm font-bold">
                                                     <span className="text-brand-teal">Tổng thu hộ (COD):</span>

@@ -3,7 +3,9 @@ export enum OrderStatus {
   PENDING = 'PENDING',
   ROUTED = 'ROUTED',
   COMPLETED = 'COMPLETED',
-  CANCELLED = 'CANCELLED'
+  CANCELLED = 'CANCELLED',
+  CHANGED = 'CHANGED',
+  FAILED = 'FAILED'
 }
 
 export interface RawOrder {
@@ -55,8 +57,11 @@ export interface Cluster {
   totalDistanceKm: number;
   estimatedCost: number;
   extraFee: number;
+  stopFee?: number; // New: Fee per stop
+  deduction?: number; // New: Deduction amount
   assignedShipperId: string | null;
   isCompleted: boolean;
+  isReconciled?: boolean; // New: Finalized after reconciliation
   createdAt: number;
   color?: string; // For map visualization
   centroid?: Coordinate; // Center of the cluster
@@ -72,4 +77,4 @@ export interface FieldMapping {
   cod: string;
 }
 
-export type ViewState = 'IMPORT' | 'SHIPPERS' | 'PLANNING' | 'RESULTS' | 'HISTORY';
+export type ViewState = 'IMPORT' | 'PLANNING' | 'RESULTS' | 'SHIPPERS' | 'HISTORY' | 'RECONCILIATION';
