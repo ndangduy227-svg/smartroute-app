@@ -10,12 +10,12 @@ interface ResultsViewProps {
     onComplete: (completedClusters: Cluster[]) => void;
     onUpdateCluster: (cluster: Cluster) => void;
     onUpdateClusters: (clusters: Cluster[]) => void;
-    onUpdateClusters: (clusters: Cluster[]) => void;
+    onDeleteCluster: (clusterId: string) => void;
     apiKey: string;
     warehouse: Coordinate | null;
 }
 
-export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, onComplete, onUpdateCluster, onUpdateClusters, apiKey, warehouse }) => {
+export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, onComplete, onUpdateCluster, onUpdateClusters, onDeleteCluster, apiKey, warehouse }) => {
     const [selectedClusterId, setSelectedClusterId] = useState<string | null>(clusters[0]?.id || null);
     const [viewMode, setViewMode] = useState<'MAP' | 'DETAILS' | 'KANBAN'>('MAP');
     const [isOptimizing, setIsOptimizing] = useState(false);
@@ -270,7 +270,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
                             <div
                                 key={cluster.id}
                                 onClick={() => setSelectedClusterId(cluster.id)}
-                                className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedClusterId === cluster.id
+                                className={`p-3 rounded-lg border cursor-pointer transition-all relative group ${selectedClusterId === cluster.id
                                     ? 'bg-brand-purple/20 border-brand-purple'
                                     : 'bg-slate-800 border-slate-700 hover:border-gray-500'
                                     } ${cluster.isCompleted ? 'opacity-50' : ''}`}
@@ -286,6 +286,20 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
                                     {assignedShipper ? assignedShipper.name : 'Chưa gán tài xế'}
                                 </div>
                                 {cluster.isCompleted && <div className="mt-1 text-xs text-green-400 font-bold">HOÀN THÀNH</div>}
+
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onDeleteCluster(cluster.id);
+                                        if (selectedClusterId === cluster.id) setSelectedClusterId(null);
+                                    }}
+                                    className="absolute top-2 right-2 p-1 text-gray-500 hover:text-red-500 hover:bg-slate-700 rounded opacity-0 group-hover:opacity-100 transition-all"
+                                    title="Xóa chuyến xe"
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
                             </div>
                         );
                     })}
