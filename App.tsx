@@ -60,6 +60,12 @@ const App: React.FC = () => {
         // In a real app, update individual order status to COMPLETED
     };
 
+    const handleDeleteCluster = (clusterId: string) => {
+        if (confirm('Bạn có chắc chắn muốn xóa chuyến xe này không?')) {
+            setClusters(clusters.filter(c => c.id !== clusterId));
+        }
+    };
+
     return (
         <div className="flex min-h-screen bg-brand-dark text-slate-100 font-sans">
             {/* Sidebar */}
@@ -165,6 +171,7 @@ const App: React.FC = () => {
                             onComplete={handleCompleteClusters}
                             onUpdateCluster={handleUpdateCluster}
                             onUpdateClusters={handleUpdateClusters}
+                            onDeleteCluster={handleDeleteCluster}
                             apiKey={apiKey}
                             warehouse={warehouse}
                         />
