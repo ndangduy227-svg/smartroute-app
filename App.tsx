@@ -5,7 +5,7 @@ import { PlanningView } from './components/PlanningView';
 import { ResultsView } from './components/ResultsView';
 import { ShipperManager } from './components/ShipperManager';
 import { UserGuide } from './components/UserGuide';
-import { ViewState, Order, Shipper, Cluster, OrderStatus } from './types';
+import { ViewState, Order, Shipper, Cluster, OrderStatus, Coordinate } from './types';
 
 // Icons
 const Icons = {
@@ -27,6 +27,7 @@ const App: React.FC = () => {
     ]);
     const [clusters, setClusters] = useState<Cluster[]>([]);
     const [apiKey, setApiKey] = useState<string>(''); // Default or empty
+    const [warehouse, setWarehouse] = useState<Coordinate | null>(null); // Lifted state
 
     const handleOrdersImported = (newOrders: Order[]) => {
         setOrders(newOrders);
@@ -152,6 +153,8 @@ const App: React.FC = () => {
                             onClustersGenerated={handleClustersGenerated}
                             apiKey={apiKey}
                             setApiKey={setApiKey}
+                            warehouse={warehouse}
+                            setWarehouse={setWarehouse}
                         />
                     )}
 
@@ -163,6 +166,7 @@ const App: React.FC = () => {
                             onUpdateCluster={handleUpdateCluster}
                             onUpdateClusters={handleUpdateClusters}
                             apiKey={apiKey}
+                            warehouse={warehouse}
                         />
                     )}
 

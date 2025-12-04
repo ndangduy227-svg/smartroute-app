@@ -10,6 +10,10 @@ interface PlanningViewProps {
     orders: Order[];
     shippers: Shipper[];
     onClustersGenerated: (clusters: Cluster[]) => void;
+    apiKey: string;
+    setApiKey: (key: string) => void;
+    warehouse: Coordinate | null;
+    setWarehouse: (coord: Coordinate | null) => void;
 }
 
 // Helper to calculate distance between two points (Haversine formula)
@@ -76,8 +80,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
 
     // Enriched Orders with Coordinates
     const [mappedOrders, setMappedOrders] = useState<Order[]>([]);
-    // Warehouse Coords
-    const [startPointCoords, setStartPointCoords] = useState<Coordinate | null>(null);
+    // Warehouse Coords - REMOVED LOCAL STATE, USING PROP
     const [startPointAddress, setStartPointAddress] = useState<string>('');
 
 
@@ -99,7 +102,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
         setConfig({ ...config, startPoints: newPoints });
         setStartPointAddress(val);
         // Reset coords if text changes, forcing re-validation
-        setStartPointCoords(null);
+        setWarehouse(null);
     };
 
     // --- TRACKASIA GEOCODING ---
@@ -154,17 +157,17 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
         if (apiKeyStatus === 'VALID' || config.trackAsiaApiKey) {
             const coords = await geocodeAddress(config.startPoints[0], config.trackAsiaApiKey!);
             if (coords) {
-                setStartPointCoords(coords);
+                setWarehouse(coords);
                 setStartPointAddress(config.startPoints[0]);
                 setViewMode('MAP');
             } else {
                 alert("Không tìm thấy địa chỉ này trên bản đồ TrackAsia. Vui lòng kiểm tra lại chính tả.");
-                setStartPointCoords(null);
+                setWarehouse(null);
                 setStartPointAddress('');
             }
         } else {
             // Offline handling for start point (Mock)
-            setStartPointCoords({ lat: 10.7769, lng: 106.7009 }); // Default center HCM
+            setWarehouse({ lat: 10.7769, lng: 106.7009 }); // Default center HCM
             setStartPointAddress(config.startPoints[0] || "Chợ Bến Thành, Hồ Chí Minh");
             alert("Đang ở chế độ Offline (Không có API Key). Kho hàng được đặt mặc định tại trung tâm TP.HCM để mô phỏng.");
         }
@@ -407,7 +410,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
     };
 
     const handleStartOptimization = () => {
-        if (!startPointCoords) {
+        if (!warehouse) {
             alert("Vui lòng xác thực địa chỉ kho hàng trước!");
             return;
         }
@@ -431,7 +434,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
             await new Promise(r => setTimeout(r, 600));
 
             let processedOrders = [...activeOrders];
-            let originCoords: Coordinate | undefined = startPointCoords || undefined;
+            let originCoords: Coordinate | undefined = warehouse || undefined;
 
             if (apiKeyStatus === 'VALID' && config.trackAsiaApiKey) {
                 // 1. Geocode Warehouse if not already done
@@ -440,7 +443,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                     const sp = await geocodeAddress(config.startPoints[0], config.trackAsiaApiKey);
                     if (sp) {
                         originCoords = sp;
-                        setStartPointCoords(sp);
+                        setWarehouse(sp);
                     } else {
                         alert("Bắt buộc phải có địa chỉ kho hàng chính xác để tối ưu.");
                         setIsOptimizing(false);
@@ -584,11 +587,11 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
 
     const handlePreviewMap = async () => {
         // 1. Check Warehouse
-        if (apiKeyStatus === 'VALID' && config.trackAsiaApiKey && !startPointCoords) {
+        if (apiKeyStatus === 'VALID' && config.trackAsiaApiKey && !warehouse) {
             setStatusMessage('Đang lấy vị trí kho (TrackAsia)...');
             const sp = await geocodeAddress(config.startPoints[0], config.trackAsiaApiKey);
             if (sp) {
-                setStartPointCoords(sp);
+                setWarehouse(sp);
                 setStartPointAddress(config.startPoints[0]);
             }
         }
@@ -696,14 +699,14 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                     <div className="relative" id="tour-warehouse">
                         <label className="text-xs text-gray-400 uppercase font-bold mb-1 flex justify-between">
                             Điểm lấy hàng (Kho)
-                            {startPointCoords && <span className="text-green-400 font-normal">✓ Đã tìm thấy</span>}
+                            {warehouse && <span className="text-green-400 font-normal">✓ Đã tìm thấy</span>}
                         </label>
                         <div className="flex gap-2">
                             <input
                                 type="text"
                                 value={config.startPoints[0]}
                                 onChange={(e) => handleStartPointChange(0, e.target.value)}
-                                className={`w-full bg-slate-800 border rounded p-2 text-sm text-white focus:ring-1 focus:ring-brand-teal outline-none ${startPointCoords ? 'border-green-500/50' : 'border-slate-600'}`}
+                                className={`w-full bg-slate-800 border rounded p-2 text-sm text-white focus:ring-1 focus:ring-brand-teal outline-none ${warehouse ? 'border-green-500/50' : 'border-slate-600'}`}
                                 placeholder="VD: 123 Lê Lợi, Quận 1"
                             />
                             <button
@@ -788,7 +791,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                         {viewMode === 'MAP' && (
                             <PlanningMap
                                 orders={mappedOrders.filter(o => selectedOrderIds.has(o.id) && o.status === OrderStatus.PENDING)}
-                                warehouse={startPointCoords}
+                                warehouse={warehouse}
                                 apiKey={config.trackAsiaApiKey || ''}
                             />
                         )}

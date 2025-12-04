@@ -25,7 +25,7 @@ const payload = {
             "start": [106.7009, 10.7769],
             "end": [106.7009, 10.7769],
             "capacity": [5],
-            "profile": "car"
+            "profile": "motorcycle"
         }
     ],
     "options": {
