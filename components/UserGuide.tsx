@@ -33,7 +33,21 @@ export const UserGuide: React.FC<UserGuideProps> = ({ isOpen, onClose }) => {
                                     <strong className="text-white">File Excel/CSV:</strong> Kéo thả file `.xlsx` hoặc `.csv` vào khung upload.
                                 </li>
                                 <li>
-                                    <strong className="text-white">Google Sheet (App Script):</strong> Nhập URL Web App của Google Apps Script để lấy dữ liệu JSON trực tiếp từ Sheet.
+                                    <strong className="text-white">Google Sheet (App Script):</strong> Nhập URL Web App.
+                                    <div className="mt-2 bg-slate-900 p-3 rounded border border-slate-700 text-xs font-mono text-gray-400 overflow-x-auto">
+                                        <p className="mb-1 text-green-400">// Code Apps Script (Extensions {'>'} Apps Script):</p>
+                                        <pre>{`function doGet() {
+  var data = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getDataRange().getValues();
+  var headers = data[0];
+  var result = data.slice(1).map(r => {
+    var obj = {};
+    headers.forEach((h, i) => obj[h] = r[i]);
+    return obj;
+  });
+  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+}`}</pre>
+                                        <p className="mt-2 text-yellow-500">⚠ Deploy as Web App {'>'} Who has access: "Anyone"</p>
+                                    </div>
                                 </li>
                                 <li>
                                     <strong className="text-white">Lark Base / POSCake:</strong> Kết nối qua API (yêu cầu Token/Key).
