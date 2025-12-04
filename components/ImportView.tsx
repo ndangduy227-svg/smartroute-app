@@ -24,6 +24,7 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
     const [fileName, setFileName] = useState<string>('');
     const [errorMsg, setErrorMsg] = useState<string>('');
     const [loading, setLoading] = useState(false);
+    const [pasteData, setPasteData] = useState(''); // New: Paste Data State
 
     const processFile = async (file: File) => {
         setErrorMsg('');
@@ -110,12 +111,16 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
         const lines = text.split('\n').filter(line => line.trim() !== '');
         if (lines.length < 2) return;
 
-        const headerLine = lines[0].split(',');
+        // Detect delimiter (comma or tab)
+        const firstLine = lines[0];
+        const delimiter = firstLine.includes('\t') ? '\t' : ',';
+
+        const headerLine = lines[0].split(delimiter);
         const headerRow = headerLine.map(h => h.trim());
         setHeaders(headerRow);
 
         const dataRows = lines.slice(1).map((line, idx) => {
-            const values = line.split(',');
+            const values = line.split(delimiter);
             const row: RawOrder = { id: `raw-${idx}` };
             headerRow.forEach((h, i) => {
                 row[h] = values[i]?.trim();
@@ -126,6 +131,15 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
         setParsedRows(dataRows);
         suggestMapping(headerRow);
         setStep(2);
+    };
+
+    const handlePaste = () => {
+        if (!pasteData.trim()) {
+            setErrorMsg("Vui lòng dán dữ liệu vào ô trống.");
+            return;
+        }
+        setFileName('Pasted Data');
+        parseCSV(pasteData);
     };
 
     const suggestMapping = (headerList: string[]) => {
@@ -398,6 +412,29 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
                                     {loading ? 'Đang tải...' : 'Import POSCake'}
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Paste Area Section */}
+            {step === 1 && (
+                <div className="mt-8 pt-6 border-t border-slate-700">
+                    <h4 className="text-gray-400 text-sm font-bold mb-4 uppercase">Hoặc dán trực tiếp từ Excel (Copy & Paste)</h4>
+                    <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+                        <textarea
+                            className="w-full h-32 bg-slate-900 border border-slate-600 rounded p-3 text-white text-xs font-mono focus:border-brand-teal outline-none"
+                            placeholder="Copy dữ liệu từ Excel (bao gồm cả dòng tiêu đề) và dán vào đây..."
+                            value={pasteData}
+                            onChange={(e) => setPasteData(e.target.value)}
+                        />
+                        <div className="flex justify-end mt-2">
+                            <button
+                                onClick={handlePaste}
+                                className="bg-brand-teal text-brand-dark font-bold py-2 px-6 rounded hover:bg-teal-400 transition-colors"
+                            >
+                                Xử lý dữ liệu
+                            </button>
                         </div>
                     </div>
                 </div>

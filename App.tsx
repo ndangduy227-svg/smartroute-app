@@ -3,6 +3,8 @@ import { BRAND_LOGOS } from './constants';
 import { ImportView } from './components/ImportView';
 import { PlanningView } from './components/PlanningView';
 import { ResultsView } from './components/ResultsView';
+import { ReconciliationView } from './components/ReconciliationView';
+import { HistoryView } from './components/HistoryView';
 import { ShipperManager } from './components/ShipperManager';
 import { UserGuide } from './components/UserGuide';
 import { ViewState, Order, Shipper, Cluster, OrderStatus, Coordinate } from './types';
@@ -13,6 +15,7 @@ const Icons = {
     Users: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
     Map: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0121 18.382V7.618a1 1 0 01-.553-.894L15 7m0 13V7" /></svg>,
     Truck: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>,
+    Check: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>,
     History: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
 };
 
@@ -60,6 +63,10 @@ const App: React.FC = () => {
         // In a real app, update individual order status to COMPLETED
     };
 
+    const handleFinalizeCluster = (clusterId: string) => {
+        setClusters(clusters.map(c => c.id === clusterId ? { ...c, isReconciled: true } : c));
+    };
+
     const handleDeleteCluster = (clusterId: string) => {
         if (confirm('Bạn có chắc chắn muốn xóa chuyến xe này không?')) {
             setClusters(clusters.filter(c => c.id !== clusterId));
@@ -98,6 +105,13 @@ const App: React.FC = () => {
                     >
                         <Icons.Truck />
                         Kết Quả Lộ Trình
+                    </button>
+                    <button
+                        onClick={() => setView('RECONCILIATION')}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${view === 'RECONCILIATION' ? 'bg-brand-teal text-brand-dark font-bold shadow-[0_0_15px_rgba(45,225,194,0.3)]' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}
+                    >
+                        <Icons.Check />
+                        Đối Soát
                     </button>
                     <div className="h-px bg-slate-800 my-4 mx-2"></div>
                     <button
@@ -166,7 +180,7 @@ const App: React.FC = () => {
 
                     {view === 'RESULTS' && (
                         <ResultsView
-                            clusters={clusters}
+                            clusters={clusters.filter(c => !c.isCompleted)}
                             shippers={shippers}
                             onComplete={handleCompleteClusters}
                             onUpdateCluster={handleUpdateCluster}
@@ -174,6 +188,14 @@ const App: React.FC = () => {
                             onDeleteCluster={handleDeleteCluster}
                             apiKey={apiKey}
                             warehouse={warehouse}
+                        />
+                    )}
+
+                    {view === 'RECONCILIATION' && (
+                        <ReconciliationView
+                            clusters={clusters.filter(c => c.isCompleted && !c.isReconciled)}
+                            onUpdateCluster={handleUpdateCluster}
+                            onFinalizeCluster={handleFinalizeCluster}
                         />
                     )}
 
@@ -186,45 +208,10 @@ const App: React.FC = () => {
                     )}
 
                     {view === 'HISTORY' && (
-                        <div className="p-10 text-center text-gray-500">
-                            <h2 className="text-2xl text-white mb-2">Lịch Sử Đơn Hàng</h2>
-                            <p>Các chuyến xe đã hoàn thành sẽ xuất hiện tại đây.</p>
-                            <div className="mt-8 overflow-x-auto text-left max-w-4xl mx-auto">
-                                <table className="w-full text-sm text-gray-400">
-                                    <thead className="text-xs uppercase bg-slate-800 text-gray-300">
-                                        <tr>
-                                            <th className="px-4 py-3">Tên Chuyến</th>
-                                            <th className="px-4 py-3">Tài Xế</th>
-                                            <th className="px-4 py-3 text-center">Điểm Giao</th>
-                                            <th className="px-4 py-3 text-right">Quãng Đường</th>
-                                            <th className="px-4 py-3 text-right">Phí Ship</th>
-                                            <th className="px-4 py-3 text-right">Tổng COD</th>
-                                            <th className="px-4 py-3 text-center">Trạng Thái</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {clusters.filter(c => c.isCompleted).map(c => (
-                                            <tr key={c.id} className="border-b border-slate-700 bg-slate-900">
-                                                <td className="px-4 py-3">{c.name}</td>
-                                                <td className="px-4 py-3">{shippers.find(s => s.id === c.assignedShipperId)?.name || 'N/A'}</td>
-                                                <td className="px-4 py-3 text-center">{c.orders.length}</td>
-                                                <td className="px-4 py-3 text-right">{c.totalDistanceKm} km</td>
-                                                <td className="px-4 py-3 text-right text-brand-purple">{(c.estimatedCost + c.extraFee).toLocaleString()} đ</td>
-                                                <td className="px-4 py-3 text-right font-mono text-brand-teal">
-                                                    {c.orders.reduce((acc, o) => acc + o.cod, 0).toLocaleString()} đ
-                                                </td>
-                                                <td className="px-4 py-3 text-center">
-                                                    <span className="px-2 py-1 rounded bg-green-900/50 text-green-400 text-xs font-bold border border-green-800">HOÀN THÀNH</span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {clusters.filter(c => c.isCompleted).length === 0 && (
-                                            <tr><td colSpan={4} className="p-4 text-center">Chưa có lịch sử</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                        <HistoryView
+                            clusters={clusters}
+                            shippers={shippers}
+                        />
                     )}
                 </div>
             </main>

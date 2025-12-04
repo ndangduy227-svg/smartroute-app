@@ -84,6 +84,11 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
     const [statusMessage, setStatusMessage] = useState('');
     const [viewMode, setViewMode] = useState<'LIST' | 'MAP'>('MAP');
 
+    // Filter State
+    const [filterField, setFilterField] = useState<keyof Order | 'all'>('all');
+    const [filterCondition, setFilterCondition] = useState<'contains' | 'equals' | 'hasValue'>('contains');
+    const [filterValue, setFilterValue] = useState('');
+
     // Enriched Orders with Coordinates
     const [mappedOrders, setMappedOrders] = useState<Order[]>([]);
     // Warehouse Coords - REMOVED LOCAL STATE, USING PROP
@@ -101,6 +106,32 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
         else newSet.add(id);
         setSelectedOrderIds(newSet);
     };
+
+    // Filter Logic
+    const filteredOrders = mappedOrders.filter(o => {
+        if (o.status !== OrderStatus.PENDING) return false;
+        if (filterField === 'all') return true; // Or implement global search
+
+        const val = String(o[filterField] || '').toLowerCase();
+        const search = filterValue.toLowerCase();
+
+        if (filterCondition === 'hasValue') return val.trim() !== '';
+        if (filterCondition === 'equals') return val === search;
+        return val.includes(search);
+    });
+
+    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.checked) {
+            const newSet = new Set(selectedOrderIds);
+            filteredOrders.forEach(o => newSet.add(o.id));
+            setSelectedOrderIds(newSet);
+        } else {
+            const newSet = new Set(selectedOrderIds);
+            filteredOrders.forEach(o => newSet.delete(o.id));
+            setSelectedOrderIds(newSet);
+        }
+    };
+
 
     const handleStartPointChange = (idx: number, val: string) => {
         const newPoints = [...config.startPoints];
@@ -744,31 +775,90 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
             <div className="flex flex-1 gap-6 min-h-0">
                 {/* Left: Order List */}
                 <div className="w-1/3 flex flex-col bg-slate-900 border border-slate-700 rounded-xl overflow-hidden">
-                    <div className="p-3 bg-slate-800 border-b border-slate-700 flex justify-between items-center">
-                        <h4 className="font-semibold text-white">Đơn hàng chờ xử lý</h4>
-                        <span className="text-xs bg-brand-teal text-brand-dark px-2 py-0.5 rounded-full font-bold">{selectedOrderIds.size} Đã chọn</span>
+                    <div className="p-3 bg-slate-800 border-b border-slate-700">
+                        <div className="flex justify-between items-center mb-2">
+                            <h4 className="font-semibold text-white">Đơn hàng chờ xử lý</h4>
+                            <span className="text-xs bg-brand-teal text-brand-dark px-2 py-0.5 rounded-full font-bold">{selectedOrderIds.size} Đã chọn</span>
+                        </div>
+
+                        {/* Filter Bar */}
+                        <div className="flex flex-col gap-2 mb-2">
+                            <div className="flex gap-1">
+                                <select
+                                    className="bg-slate-900 border border-slate-600 text-xs text-white rounded px-1 py-1 flex-1"
+                                    value={filterField}
+                                    onChange={(e) => setFilterField(e.target.value as any)}
+                                >
+                                    <option value="all">Tất cả</option>
+                                    <option value="customerName">Tên KH</option>
+                                    <option value="address">Địa chỉ</option>
+                                    <option value="phoneNumber">SĐT</option>
+                                    <option value="cod">COD</option>
+                                    <option value="note">Ghi chú</option>
+                                </select>
+                                <select
+                                    className="bg-slate-900 border border-slate-600 text-xs text-white rounded px-1 py-1 w-24"
+                                    value={filterCondition}
+                                    onChange={(e) => setFilterCondition(e.target.value as any)}
+                                >
+                                    <option value="contains">Chứa</option>
+                                    <option value="equals">Bằng</option>
+                                    <option value="hasValue">Có giá trị</option>
+                                </select>
+                            </div>
+                            {filterCondition !== 'hasValue' && (
+                                <input
+                                    type="text"
+                                    className="bg-slate-900 border border-slate-600 text-xs text-white rounded px-2 py-1 w-full"
+                                    placeholder="Giá trị lọc..."
+                                    value={filterValue}
+                                    onChange={(e) => setFilterValue(e.target.value)}
+                                />
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-2 border-t border-slate-700">
+                            <input
+                                type="checkbox"
+                                id="selectAll"
+                                checked={filteredOrders.length > 0 && filteredOrders.every(o => selectedOrderIds.has(o.id))}
+                                onChange={handleSelectAll}
+                                className="rounded border-slate-600 bg-slate-900 text-brand-teal focus:ring-0"
+                            />
+                            <label htmlFor="selectAll" className="text-xs text-gray-400 cursor-pointer select-none">Chọn tất cả ({filteredOrders.length})</label>
+                        </div>
                     </div>
                     <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                        {mappedOrders.filter(o => o.status === OrderStatus.PENDING).map(order => (
+                        {filteredOrders.map(order => (
                             <div
                                 key={order.id}
                                 onClick={() => toggleOrder(order.id)}
-                                className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedOrderIds.has(order.id)
+                                className={`p-3 rounded-lg border cursor-pointer transition-all flex gap-3 ${selectedOrderIds.has(order.id)
                                     ? 'bg-brand-purple/20 border-brand-purple'
                                     : 'bg-slate-800 border-slate-700 hover:border-gray-500'
                                     }`}
                             >
-                                <div className="flex justify-between items-start mb-1">
-                                    <span className="font-bold text-sm text-white">{order.customerName}</span>
-                                    <span className="text-xs text-brand-teal font-mono">{order.cod.toLocaleString()}</span>
+                                <div className="pt-1">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedOrderIds.has(order.id)}
+                                        readOnly
+                                        className="rounded border-slate-600 bg-slate-900 text-brand-teal focus:ring-0 pointer-events-none"
+                                    />
                                 </div>
-                                <p className="text-xs text-gray-400 truncate">{order.address}</p>
-                                {order.coordinates && (
-                                    <div className="mt-1 flex items-center gap-1 text-[10px] text-gray-500">
-                                        <svg className="w-3 h-3 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
-                                        {apiKeyStatus === 'VALID' ? 'GPS TrackAsia' : 'Vị trí ước lượng'}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <span className="font-bold text-sm text-white truncate">{order.customerName}</span>
+                                        <span className="text-xs text-brand-teal font-mono whitespace-nowrap ml-2">{order.cod.toLocaleString()}</span>
                                     </div>
-                                )}
+                                    <p className="text-xs text-gray-400 truncate" title={order.address}>{order.address}</p>
+                                    {order.coordinates && (
+                                        <div className="mt-1 flex items-center gap-1 text-[10px] text-gray-500">
+                                            <svg className="w-3 h-3 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
+                                            {apiKeyStatus === 'VALID' ? 'GPS TrackAsia' : 'Vị trí ước lượng'}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         ))}
                     </div>
