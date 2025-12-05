@@ -6,13 +6,13 @@ import { Order, Coordinate } from '../types';
 interface PlanningMapProps {
     orders: Order[];
     warehouse: Coordinate | null;
-    apiKey: string;
 }
 
-export const PlanningMap: React.FC<PlanningMapProps> = ({ orders, warehouse, apiKey }) => {
+export const PlanningMap: React.FC<PlanningMapProps> = ({ orders, warehouse }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
     const markersRef = useRef<any[]>([]);
+    const apiKey = import.meta.env.VITE_TRACK_ASIA_API_KEY;
 
     // Initialize Map
     useEffect(() => {
@@ -35,7 +35,7 @@ export const PlanningMap: React.FC<PlanningMapProps> = ({ orders, warehouse, api
         } catch (error) {
             console.error("Error initializing map:", error);
         }
-    }, [apiKey]);
+    }, []);
 
     // Update Markers
     useEffect(() => {
@@ -103,7 +103,7 @@ export const PlanningMap: React.FC<PlanningMapProps> = ({ orders, warehouse, api
             map.on('load', updateMarkers);
         }
 
-    }, [orders, warehouse, apiKey]);
+    }, [orders, warehouse]);
 
     if (!apiKey) {
         return (
@@ -115,7 +115,7 @@ export const PlanningMap: React.FC<PlanningMapProps> = ({ orders, warehouse, api
                 </div>
                 <h3 className="text-lg font-bold text-white mb-2">Chưa kết nối bản đồ</h3>
                 <p className="text-gray-400 text-sm max-w-xs">
-                    Vui lòng nhập TrackAsia API Key để hiển thị bản đồ và tối ưu tuyến đường.
+                    Không tìm thấy API Key trong biến môi trường (VITE_TRACK_ASIA_API_KEY).
                 </p>
             </div>
         );

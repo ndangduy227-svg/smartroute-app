@@ -10,8 +10,6 @@ interface PlanningViewProps {
     orders: Order[];
     shippers: Shipper[];
     onClustersGenerated: (clusters: Cluster[]) => void;
-    apiKey: string;
-    setApiKey: (key: string) => void;
     warehouse: Coordinate | null;
     setWarehouse: (coord: Coordinate | null) => void;
 }
@@ -19,7 +17,7 @@ interface PlanningViewProps {
 // Helper to calculate distance between two points (Haversine formula)
 // MOVED TO utils/vrpHelpers.ts
 
-export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, onClustersGenerated, apiKey, setApiKey, warehouse, setWarehouse }) => {
+export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, onClustersGenerated, warehouse, setWarehouse }) => {
     // Config State
     const [config, setConfig] = useState<RouteConfig>({
         startPoints: [],
@@ -29,21 +27,13 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
         costPerPoint: 5000, // 5k VND per point (default)
         currency: 'VND',
         maxKmPerShipper: 100,
-        trackAsiaApiKey: apiKey || '',
         geminiApiKey: ''
     });
 
     const [showConfirmModal, setShowConfirmModal] = useState(false); // New: Confirmation Modal State
-    const [showApiGuide, setShowApiGuide] = useState(false); // New: API Guide Modal
     const [showTour, setShowTour] = useState(false); // New: Tour State
-    const [showApiKeyModal, setShowApiKeyModal] = useState(false); // New: Prompt for API Key on load
 
     const tourSteps: TourStep[] = [
-        {
-            targetId: 'tour-api-key',
-            title: '1. Kết nối TrackAsia',
-            content: 'Nhập API Key của bạn vào đây để kích hoạt tính năng bản đồ và tối ưu hóa tuyến đường. Bấm nút "Hướng dẫn lấy Key" nếu bạn chưa có.'
-        },
         {
             targetId: 'tour-warehouse',
             title: '2. Xác định Kho hàng',
@@ -62,23 +52,13 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
     ];
 
     // Sync prop changes to local config (optional, but good for consistency)
-    useEffect(() => {
-        setConfig(prev => ({ ...prev, trackAsiaApiKey: apiKey }));
-        if (!apiKey) {
-            setShowApiKeyModal(true);
-        } else {
-            setApiKeyStatus('VALID'); // Assume valid if present, or let the check validate it
-        }
-    }, [apiKey]);
+
 
     const handleConfigChange = (field: keyof RouteConfig, value: any) => {
         setConfig(prev => ({ ...prev, [field]: value }));
-        if (field === 'trackAsiaApiKey') {
-            setApiKey(value);
-        }
     };
 
-    const [apiKeyStatus, setApiKeyStatus] = useState<'IDLE' | 'CHECKING' | 'VALID' | 'INVALID'>('IDLE');
+
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set(orders.map(o => o.id)));
     const [isOptimizing, setIsOptimizing] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
@@ -147,41 +127,10 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
     // --- TRACKASIA GEOCODING ---
     // Moved to utils/vrpHelpers.ts
 
-    // --- KEY CHECK ---
-    const handleCheckApiKey = async () => {
-        if (!config.trackAsiaApiKey) {
-            alert("Vui lòng nhập TrackAsia API Key.");
-            setApiKeyStatus('IDLE');
-            return;
-        }
-        setApiKeyStatus('CHECKING');
 
-        // Test with a known reliable location (e.g., Ho Chi Minh City)
-        const testAddress = "Ho Chi Minh City, Vietnam";
-        try {
-            const url = `https://maps.track-asia.com/api/v1/autocomplete?text=${encodeURIComponent(testAddress)}&key=${config.trackAsiaApiKey}&lang=vi`;
-            const response = await fetch(url);
-            const data = await response.json();
-
-            if (data && data.features) {
-                setApiKeyStatus('VALID');
-            } else {
-                setApiKeyStatus('INVALID');
-                alert(`Kết nối thất bại! Vui lòng kiểm tra lại API Key.\nCode: ${data.code || 'Unknown'}`);
-            }
-        } catch (e) {
-            setApiKeyStatus('INVALID');
-            alert("Lỗi mạng! Không thể kết nối tới TrackAsia API.");
-        }
-    };
 
 
     const handleCheckStartPoint = async () => {
-        // Must validate key first or be in valid state
-        if (apiKeyStatus !== 'VALID' && config.trackAsiaApiKey) {
-            await handleCheckApiKey();
-            if (apiKeyStatus === 'INVALID') return;
-        }
 
         if (!config.startPoints[0]) {
             alert("Vui lòng nhập địa chỉ kho hàng.");
@@ -191,22 +140,15 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
         setIsOptimizing(true);
         setStatusMessage('Đang xác thực địa chỉ kho hàng...');
 
-        if (apiKeyStatus === 'VALID' || config.trackAsiaApiKey) {
-            const coords = await geocodeAddress(config.startPoints[0], config.trackAsiaApiKey!);
-            if (coords) {
-                setWarehouse(coords);
-                setStartPointAddress(config.startPoints[0]);
-                setViewMode('MAP');
-            } else {
-                alert("Không tìm thấy địa chỉ này trên bản đồ TrackAsia. Vui lòng kiểm tra lại chính tả.");
-                setWarehouse(null);
-                setStartPointAddress('');
-            }
+        const coords = await geocodeAddress(config.startPoints[0]);
+        if (coords) {
+            setWarehouse(coords);
+            setStartPointAddress(config.startPoints[0]);
+            setViewMode('MAP');
         } else {
-            // Offline handling for start point (Mock)
-            setWarehouse({ lat: 10.7769, lng: 106.7009 }); // Default center HCM
-            setStartPointAddress(config.startPoints[0] || "Chợ Bến Thành, Hồ Chí Minh");
-            alert("Đang ở chế độ Offline (Không có API Key). Kho hàng được đặt mặc định tại trung tâm TP.HCM để mô phỏng.");
+            alert("Không tìm thấy địa chỉ này trên bản đồ TrackAsia. Vui lòng kiểm tra lại chính tả.");
+            setWarehouse(null);
+            setStartPointAddress('');
         }
 
         setIsOptimizing(false);
@@ -473,59 +415,51 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
             let processedOrders = [...activeOrders];
             let originCoords: Coordinate | undefined = warehouse || undefined;
 
-            if (apiKeyStatus === 'VALID' && config.trackAsiaApiKey) {
-                // 1. Geocode Warehouse if not already done
-                if (!originCoords) {
-                    setStatusMessage('Đang tìm vị trí kho hàng (TrackAsia)...');
-                    const sp = await geocodeAddress(config.startPoints[0], config.trackAsiaApiKey);
-                    if (sp) {
-                        originCoords = sp;
-                        setWarehouse(sp);
-                    } else {
-                        alert("Bắt buộc phải có địa chỉ kho hàng chính xác để tối ưu.");
-                        setIsOptimizing(false);
-                        return;
-                    }
+            // 1. Geocode Warehouse if not already done
+            if (!originCoords) {
+                setStatusMessage('Đang tìm vị trí kho hàng (TrackAsia)...');
+                const sp = await geocodeAddress(config.startPoints[0]);
+                if (sp) {
+                    originCoords = sp;
+                    setWarehouse(sp);
+                } else {
+                    alert("Bắt buộc phải có địa chỉ kho hàng chính xác để tối ưu.");
+                    setIsOptimizing(false);
+                    return;
+                }
+            }
+
+            setStatusMessage('Đang lấy tọa độ đơn hàng...');
+
+            const updatedOrders = [];
+            let processedCount = 0;
+
+            for (const order of activeOrders) {
+                // Skip if we already have coords from a previous run
+                if (order.coordinates && order.coordinates.lat !== 0) {
+                    updatedOrders.push(order);
+                    continue;
                 }
 
-                setStatusMessage('Đang lấy tọa độ đơn hàng...');
+                const coords = await geocodeAddress(order.address);
 
-                const updatedOrders = [];
-                let processedCount = 0;
+                updatedOrders.push({
+                    ...order,
+                    coordinates: coords || undefined
+                });
 
-                for (const order of activeOrders) {
-                    // Skip if we already have coords from a previous run
-                    if (order.coordinates && order.coordinates.lat !== 0) {
-                        updatedOrders.push(order);
-                        continue;
-                    }
+                processedCount++;
+                if (processedCount % 3 === 0) setStatusMessage(`TrackAsia Geocoding... (${processedCount} / ${activeOrders.length})`);
 
-                    const coords = await geocodeAddress(order.address, config.trackAsiaApiKey);
+                // TrackAsia rate limit handling (safe delay)
+                await new Promise(r => setTimeout(r, 100));
+            }
 
-                    updatedOrders.push({
-                        ...order,
-                        coordinates: coords || undefined
-                    });
+            // Filter out orders that failed geocoding
+            processedOrders = updatedOrders.filter(o => o.coordinates);
 
-                    processedCount++;
-                    if (processedCount % 3 === 0) setStatusMessage(`TrackAsia Geocoding... (${processedCount} / ${activeOrders.length})`);
-
-                    // TrackAsia rate limit handling (safe delay)
-                    await new Promise(r => setTimeout(r, 100));
-                }
-
-                // Filter out orders that failed geocoding
-                processedOrders = updatedOrders.filter(o => o.coordinates);
-
-                if (processedOrders.length < activeOrders.length) {
-                    console.warn(`Skipped ${activeOrders.length - processedOrders.length} orders due to geocoding failure.`);
-                }
-
-            } else {
-                // No Key provided - Cannot proceed with this flow
-                alert("Vui lòng nhập API Key để sử dụng tính năng tối ưu hóa.");
-                setIsOptimizing(false);
-                return;
+            if (processedOrders.length < activeOrders.length) {
+                console.warn(`Skipped ${activeOrders.length - processedOrders.length} orders due to geocoding failure.`);
             }
 
             setMappedOrders(prev => prev.map(p => {
@@ -535,7 +469,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
 
             let clusters: Cluster[] = [];
 
-            if (apiKeyStatus === 'VALID' && config.trackAsiaApiKey && originCoords) {
+            if (originCoords) {
                 // STRATEGY: CLUSTERING FIRST (Turf.js K-Means) -> ROUTING LATER (VRP)
 
                 // 1. Calculate Number of Clusters (Vehicles)
@@ -569,7 +503,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                         // we might need to be careful.
                         // But generally, VRP will optimize the path.
 
-                        const routes = await solveVRP(turfCluster.orders, originCoords!, config.trackAsiaApiKey!, config);
+                        const routes = await solveVRP(turfCluster.orders, originCoords!, config);
                         console.log(`[DEBUG] VRP Success for Cluster ${idx + 1}. Routes:`, routes);
 
                         if (routes.length > 0) {
@@ -624,9 +558,9 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
 
     const handlePreviewMap = async () => {
         // 1. Check Warehouse
-        if (apiKeyStatus === 'VALID' && config.trackAsiaApiKey && !warehouse) {
+        if (!warehouse) {
             setStatusMessage('Đang lấy vị trí kho (TrackAsia)...');
-            const sp = await geocodeAddress(config.startPoints[0], config.trackAsiaApiKey);
+            const sp = await geocodeAddress(config.startPoints[0]);
             if (sp) {
                 setWarehouse(sp);
                 setStartPointAddress(config.startPoints[0]);
@@ -635,30 +569,28 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
 
         // 2. Check Orders
         let withCoords = mappedOrders;
-        if (apiKeyStatus === 'VALID' && config.trackAsiaApiKey) {
-            setIsOptimizing(true);
-            setStatusMessage('Đang lấy tọa độ các đơn hàng...');
-            const pending = mappedOrders.filter(o => selectedOrderIds.has(o.id) && o.status === OrderStatus.PENDING && !o.coordinates);
+        setIsOptimizing(true);
+        setStatusMessage('Đang lấy tọa độ các đơn hàng...');
+        const pending = mappedOrders.filter(o => selectedOrderIds.has(o.id) && o.status === OrderStatus.PENDING && !o.coordinates);
 
-            if (pending.length > 0) {
-                const updatedPending = [];
-                let processedCount = 0;
-                for (const order of pending) {
-                    const coords = await geocodeAddress(order.address, config.trackAsiaApiKey);
-                    updatedPending.push({ ...order, coordinates: coords || undefined });
+        if (pending.length > 0) {
+            const updatedPending = [];
+            let processedCount = 0;
+            for (const order of pending) {
+                const coords = await geocodeAddress(order.address);
+                updatedPending.push({ ...order, coordinates: coords || undefined });
 
-                    processedCount++;
-                    if (processedCount % 5 === 0) setStatusMessage(`TrackAsia Geocoding... (${processedCount}/${pending.length})`);
-                    await new Promise(r => setTimeout(r, 100));
-                }
-
-                withCoords = mappedOrders.map(m => {
-                    const found = updatedPending.find(u => u.id === m.id);
-                    return found || m;
-                });
+                processedCount++;
+                if (processedCount % 5 === 0) setStatusMessage(`TrackAsia Geocoding... (${processedCount}/${pending.length})`);
+                await new Promise(r => setTimeout(r, 100));
             }
-            setIsOptimizing(false);
+
+            withCoords = mappedOrders.map(m => {
+                const found = updatedPending.find(u => u.id === m.id);
+                return found || m;
+            });
         }
+        setIsOptimizing(false);
 
         // Always fall back to heuristic for any still missing coords
         withCoords = smartHeuristicGeocoding(withCoords);
@@ -687,52 +619,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                         </button>
                     </div>
 
-                    {/* --- API KEY CONFIGURATION --- */}
-                    <div className="flex flex-col items-end gap-2" id="tour-api-key">
-                        <div className="flex items-center gap-2">
-                            <div className={`px-2 py-0.5 rounded text-[10px] font-bold border ${apiKeyStatus === 'VALID' ? 'bg-green-900/50 border-green-500 text-green-400' : apiKeyStatus === 'INVALID' ? 'bg-red-900/50 border-red-500 text-red-400' : 'bg-slate-700 border-gray-500 text-gray-400'}`}>
-                                {apiKeyStatus === 'VALID' ? 'ĐÃ KẾT NỐI' : apiKeyStatus === 'INVALID' ? 'KẾT NỐI THẤT BẠI' : 'CHƯA KẾT NỐI'}
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2 bg-slate-800 p-1.5 rounded-lg border border-slate-600">
-                            <span className="text-xs font-bold text-gray-400 px-2">TrackAsia Key:</span>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <label className="block text-xs text-gray-400">TrackAsia API Key</label>
-                                        <button
-                                            onClick={() => setShowApiGuide(true)}
-                                            className="text-[10px] text-brand-teal hover:underline flex items-center gap-1"
-                                        >
-                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                            Hướng dẫn lấy Key
-                                        </button>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="password"
-                                            className="flex-1 bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white text-sm"
-                                            value={config.trackAsiaApiKey || ''}
-                                            onChange={(e) => handleConfigChange('trackAsiaApiKey', e.target.value)}
-                                            placeholder="Nhập TrackAsia Key"
-                                        />
-                                        <p className="text-xs text-gray-500 mt-1 col-span-2">
-                                            Chưa có Key? <a href="https://track-asia.com/" target="_blank" rel="noreferrer" className="text-brand-teal hover:underline">Đăng ký miễn phí tại Track Asia</a>.
-                                        </p>
-                                        <button
-                                            onClick={handleCheckApiKey}
-                                            className={`px-3 py-1 rounded text-xs font-bold ${apiKeyStatus === 'VALID' ? 'bg-green-600 text-white' :
-                                                apiKeyStatus === 'INVALID' ? 'bg-red-600 text-white' :
-                                                    'bg-slate-700 text-gray-300'
-                                                }`}
-                                        >
-                                            {apiKeyStatus === 'CHECKING' ? '...' : apiKeyStatus === 'VALID' ? 'ĐÃ KẾT NỐI' : 'Kiểm tra'}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    {/* --- API KEY CONFIGURATION REMOVED --- */}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-slate-800" id="tour-config">
@@ -858,7 +745,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                                     {order.coordinates && (
                                         <div className="mt-1 flex items-center gap-1 text-[10px] text-gray-500">
                                             <svg className="w-3 h-3 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
-                                            {apiKeyStatus === 'VALID' ? 'GPS TrackAsia' : 'Vị trí ước lượng'}
+                                            GPS TrackAsia
                                         </div>
                                     )}
                                 </div>
@@ -872,9 +759,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                     {/* View Toggle */}
                     <div className="flex justify-between items-center">
                         <div className="text-xs text-gray-500 italic">
-                            {apiKeyStatus === 'VALID'
-                                ? "Đang sử dụng TrackAsia API."
-                                : "Chế độ Offline (Dựa trên tên đường)."}
+                            Đang sử dụng TrackAsia API.
                         </div>
                         <button
                             onClick={() => { setViewMode('MAP'); handlePreviewMap(); }}
@@ -891,7 +776,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                             <PlanningMap
                                 orders={mappedOrders.filter(o => selectedOrderIds.has(o.id) && o.status === OrderStatus.PENDING)}
                                 warehouse={warehouse}
-                                apiKey={config.trackAsiaApiKey || ''}
+                                apiKey={''}
                             />
                         )}
 
@@ -975,111 +860,9 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                 onComplete={() => setShowTour(false)}
             />
 
-            {/* API Guide Modal */}
-            {showApiGuide && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl relative">
-                        <button
-                            onClick={() => setShowApiGuide(false)}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-white"
-                        >
-                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
 
-                        <div className="p-8">
-                            <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-                                <span className="w-10 h-10 rounded-full bg-brand-teal text-brand-dark flex items-center justify-center text-lg">🔑</span>
-                                Cách lấy TrackAsia Key
-                            </h3>
 
-                            <div className="space-y-6">
-                                <div className="flex gap-4">
-                                    <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-600 flex items-center justify-center font-bold text-brand-teal shrink-0">1</div>
-                                    <div>
-                                        <h4 className="font-bold text-white mb-1">Đăng ký tài khoản</h4>
-                                        <p className="text-sm text-gray-400">Truy cập <a href="https://track-asia.com/" target="_blank" rel="noreferrer" className="text-brand-teal hover:underline">track-asia.com</a> và đăng ký tài khoản miễn phí.</p>
-                                    </div>
-                                </div>
 
-                                <div className="flex gap-4">
-                                    <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-600 flex items-center justify-center font-bold text-brand-teal shrink-0">2</div>
-                                    <div>
-                                        <h4 className="font-bold text-white mb-1">Tạo API Key</h4>
-                                        <p className="text-sm text-gray-400">Vào phần <strong>Profile (Hồ sơ)</strong> hoặc <strong>Dashboard</strong>, tìm mục API Keys và bấm "Create New Key".</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex gap-4">
-                                    <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-600 flex items-center justify-center font-bold text-brand-teal shrink-0">3</div>
-                                    <div>
-                                        <h4 className="font-bold text-white mb-1">Copy & Paste</h4>
-                                        <p className="text-sm text-gray-400">Sao chép Key vừa tạo và dán vào ô <strong>TrackAsia API Key</strong> trên SmartRoute.</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={() => setShowApiGuide(false)}
-                                className="w-full mt-8 py-3 bg-brand-teal hover:bg-teal-400 text-brand-dark font-bold rounded-xl transition-colors"
-                            >
-                                Đã hiểu
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* API Key Prompt Modal (On Load) */}
-            {showApiKeyModal && !apiKey && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
-                    <div className="bg-slate-900 border border-brand-teal/30 rounded-2xl w-full max-w-md shadow-[0_0_50px_rgba(45,225,194,0.1)] relative overflow-hidden">
-                        {/* Decorative background */}
-                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-brand-teal to-transparent"></div>
-
-                        <div className="p-8 text-center">
-                            <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-700">
-                                <span className="text-3xl">🔑</span>
-                            </div>
-
-                            <h3 className="text-2xl font-bold text-white mb-2">Kết nối TrackAsia</h3>
-                            <p className="text-gray-400 mb-6 text-sm">
-                                Để sử dụng tính năng bản đồ và tối ưu hóa tuyến đường, vui lòng nhập API Key của bạn.
-                            </p>
-
-                            <div className="space-y-4">
-                                <input
-                                    type="text"
-                                    className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white text-center font-mono focus:border-brand-teal focus:ring-1 focus:ring-brand-teal outline-none transition-all"
-                                    placeholder="Nhập API Key tại đây..."
-                                    value={config.trackAsiaApiKey || ''}
-                                    onChange={(e) => handleConfigChange('trackAsiaApiKey', e.target.value)}
-                                />
-
-                                <button
-                                    onClick={() => {
-                                        if (config.trackAsiaApiKey) {
-                                            handleCheckApiKey();
-                                            setShowApiKeyModal(false);
-                                        } else {
-                                            alert("Vui lòng nhập API Key!");
-                                        }
-                                    }}
-                                    className="w-full py-3 bg-brand-teal hover:bg-teal-400 text-brand-dark font-bold rounded-xl transition-all shadow-lg shadow-teal-500/20"
-                                >
-                                    Bắt đầu sử dụng
-                                </button>
-
-                                <button
-                                    onClick={() => setShowApiGuide(true)}
-                                    className="text-sm text-gray-500 hover:text-brand-teal underline"
-                                >
-                                    Tôi chưa có Key? Xem hướng dẫn
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
