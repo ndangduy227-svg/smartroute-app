@@ -95,7 +95,7 @@ app.post('/api/vrp/optimize', apiLimiter, async (req, res) => {
             return res.status(400).json({ error: "Invalid payload: 'jobs' array is required" });
         }
 
-        const apiKey = process.env.TRACK_ASIA_API_KEY;
+        const apiKey = req.headers['x-track-asia-key'] || process.env.TRACK_ASIA_API_KEY;
         if (!apiKey) {
             return res.status(500).json({ error: 'Server configuration error: Missing API Key' });
         }
@@ -121,7 +121,7 @@ app.post('/api/vrp/optimize', apiLimiter, async (req, res) => {
 app.get('/api/vrp/geocode', geocodeLimiter, async (req, res) => {
     try {
         const { text } = req.query;
-        const apiKey = process.env.TRACK_ASIA_API_KEY;
+        const apiKey = req.headers['x-track-asia-key'] || process.env.TRACK_ASIA_API_KEY;
 
         if (!apiKey) {
             return res.status(500).json({ error: 'Server configuration error: Missing API Key' });

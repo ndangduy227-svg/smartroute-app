@@ -60,7 +60,7 @@ export const calculateDistance = (p1: Coordinate, p2: Coordinate): number => {
     return R * c; // Distance in km
 };
 
-export const geocodeAddress = async (address: string): Promise<Coordinate | null> => {
+export const geocodeAddress = async (address: string, apiKey?: string): Promise<Coordinate | null> => {
     try {
         const cleanAddress = address.trim();
         if (!cleanAddress) return null;
@@ -73,7 +73,12 @@ export const geocodeAddress = async (address: string): Promise<Coordinate | null
         // Call Backend Proxy
         const url = `/api/vrp/geocode?text=${encodeURIComponent(queryAddress)}`;
 
-        const response = await fetch(url);
+        const headers: HeadersInit = {};
+        if (apiKey) {
+            headers['x-track-asia-key'] = apiKey;
+        }
+
+        const response = await fetch(url, { headers });
 
         if (!response.ok) {
             console.warn(`Geocoding API error: ${response.status} ${response.statusText}`);
@@ -176,7 +181,7 @@ function decodePolyline(str: string, precision: number = 5): [number, number][] 
 
 // --- VRP SOLVER ---
 
-export const solveVRP = async (orders: Order[], origin: Coordinate, config: RouteConfig): Promise<Cluster[]> => {
+export const solveVRP = async (orders: Order[], origin: Coordinate, config: RouteConfig, apiKey?: string): Promise<Cluster[]> => {
     // 1. Prepare Data for VRP API
     // TrackAsia VRP requires INTEGER IDs. We must map our String IDs to Integers.
 
@@ -244,7 +249,10 @@ export const solveVRP = async (orders: Order[], origin: Coordinate, config: Rout
     try {
         const response = await fetch(`/api/vrp/optimize`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                ...(apiKey ? { 'x-track-asia-key': apiKey } : {})
+            },
             body: JSON.stringify(payload)
         });
 

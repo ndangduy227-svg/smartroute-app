@@ -27,8 +27,19 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
         costPerPoint: 5000, // 5k VND per point (default)
         currency: 'VND',
         maxKmPerShipper: 100,
+
         geminiApiKey: ''
     });
+
+    // API Key State
+    const [trackAsiaApiKey, setTrackAsiaApiKey] = useState<string>(() => localStorage.getItem('trackAsiaApiKey') || '');
+    const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+
+    useEffect(() => {
+        if (trackAsiaApiKey) {
+            localStorage.setItem('trackAsiaApiKey', trackAsiaApiKey);
+        }
+    }, [trackAsiaApiKey]);
 
     const [showConfirmModal, setShowConfirmModal] = useState(false); // New: Confirmation Modal State
     const [showTour, setShowTour] = useState(false); // New: Tour State
@@ -140,7 +151,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
         setIsOptimizing(true);
         setStatusMessage('Đang xác thực địa chỉ kho hàng...');
 
-        const coords = await geocodeAddress(config.startPoints[0]);
+        const coords = await geocodeAddress(config.startPoints[0], trackAsiaApiKey);
         if (coords) {
             setWarehouse(coords);
             setStartPointAddress(config.startPoints[0]);
@@ -418,7 +429,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
             // 1. Geocode Warehouse if not already done
             if (!originCoords) {
                 setStatusMessage('Đang tìm vị trí kho hàng (TrackAsia)...');
-                const sp = await geocodeAddress(config.startPoints[0]);
+                const sp = await geocodeAddress(config.startPoints[0], trackAsiaApiKey);
                 if (sp) {
                     originCoords = sp;
                     setWarehouse(sp);
@@ -441,7 +452,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                     continue;
                 }
 
-                const coords = await geocodeAddress(order.address);
+                const coords = await geocodeAddress(order.address, trackAsiaApiKey);
 
                 updatedOrders.push({
                     ...order,
@@ -503,7 +514,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                         // we might need to be careful.
                         // But generally, VRP will optimize the path.
 
-                        const routes = await solveVRP(turfCluster.orders, originCoords!, config);
+                        const routes = await solveVRP(turfCluster.orders, originCoords!, config, trackAsiaApiKey);
                         console.log(`[DEBUG] VRP Success for Cluster ${idx + 1}. Routes:`, routes);
 
                         if (routes.length > 0) {
@@ -560,7 +571,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
         // 1. Check Warehouse
         if (!warehouse) {
             setStatusMessage('Đang lấy vị trí kho (TrackAsia)...');
-            const sp = await geocodeAddress(config.startPoints[0]);
+            const sp = await geocodeAddress(config.startPoints[0], trackAsiaApiKey);
             if (sp) {
                 setWarehouse(sp);
                 setStartPointAddress(config.startPoints[0]);
@@ -577,7 +588,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
             const updatedPending = [];
             let processedCount = 0;
             for (const order of pending) {
-                const coords = await geocodeAddress(order.address);
+                const coords = await geocodeAddress(order.address, trackAsiaApiKey);
                 updatedPending.push({ ...order, coordinates: coords || undefined });
 
                 processedCount++;
@@ -619,7 +630,16 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                         </button>
                     </div>
 
-                    {/* --- API KEY CONFIGURATION REMOVED --- */}
+                    {/* API Key Configuration */}
+                    <div className="flex flex-col items-end">
+                        <button
+                            onClick={() => setShowApiKeyModal(true)}
+                            className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-2 transition-colors ${trackAsiaApiKey ? 'bg-green-900/30 text-green-400 border border-green-800' : 'bg-red-900/30 text-red-400 border border-red-800 animate-pulse'}`}
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+                            {trackAsiaApiKey ? 'Đã có API Key' : 'Chưa có API Key'}
+                        </button>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-slate-800" id="tour-config">
@@ -776,7 +796,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                             <PlanningMap
                                 orders={mappedOrders.filter(o => selectedOrderIds.has(o.id) && o.status === OrderStatus.PENDING)}
                                 warehouse={warehouse}
-                                apiKey={''}
+                                apiKey={trackAsiaApiKey}
                             />
                         )}
 
@@ -819,38 +839,75 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                             </>
                         )}
                     </button>
+
+                    {/* API Key Modal */}
+                    {showApiKeyModal && (
+                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-center items-center p-4">
+                            <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md shadow-2xl">
+                                <h3 className="text-xl font-bold text-white mb-4">Cấu hình Track Asia API</h3>
+                                <p className="text-sm text-gray-400 mb-4">
+                                    Nhập API Key của bạn để sử dụng tính năng bản đồ và tối ưu lộ trình.
+                                    <br />
+                                    <a href="https://track-asia.com/" target="_blank" rel="noreferrer" className="text-brand-teal hover:underline">Đăng ký miễn phí tại đây</a>
+                                </p>
+                                <input
+                                    type="text"
+                                    className="w-full bg-slate-800 border border-slate-600 rounded p-3 text-white mb-6 focus:ring-2 focus:ring-brand-teal outline-none"
+                                    placeholder="Nhập API Key..."
+                                    value={trackAsiaApiKey}
+                                    onChange={(e) => setTrackAsiaApiKey(e.target.value)}
+                                />
+                                <div className="flex justify-end gap-3">
+                                    <button
+                                        onClick={() => setShowApiKeyModal(false)}
+                                        className="px-4 py-2 text-gray-400 hover:text-white"
+                                    >
+                                        Đóng
+                                    </button>
+                                    <button
+                                        onClick={() => setShowApiKeyModal(false)}
+                                        className="bg-brand-teal text-brand-dark font-bold px-6 py-2 rounded hover:bg-teal-400 transition-colors"
+                                    >
+                                        Lưu Cấu Hình
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
             {/* Confirmation Modal */}
-            {showConfirmModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-                    <div className="bg-slate-800 border border-slate-600 rounded-xl p-6 max-w-md w-full shadow-2xl transform transition-all scale-100">
-                        <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                            <svg className="w-6 h-6 text-brand-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                            Xác nhận kho hàng
-                        </h3>
-                        <p className="text-gray-300 mb-2">Vui lòng xác nhận địa chỉ kho hàng của bạn là chính xác:</p>
-                        <div className="bg-slate-900 p-3 rounded border border-slate-700 mb-6 text-brand-teal font-mono text-sm break-words">
-                            {startPointAddress || "Chưa có địa chỉ"}
-                        </div>
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => setShowConfirmModal(false)}
-                                className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded font-bold transition-colors"
-                            >
-                                Hủy bỏ
-                            </button>
-                            <button
-                                onClick={runRouteOptimization}
-                                className="flex-1 py-2 bg-brand-teal hover:bg-teal-400 text-brand-dark rounded font-bold transition-colors"
-                            >
-                                Xác nhận & Tối ưu
-                            </button>
+            {
+                showConfirmModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                        <div className="bg-slate-800 border border-slate-600 rounded-xl p-6 max-w-md w-full shadow-2xl transform transition-all scale-100">
+                            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                                <svg className="w-6 h-6 text-brand-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                Xác nhận kho hàng
+                            </h3>
+                            <p className="text-gray-300 mb-2">Vui lòng xác nhận địa chỉ kho hàng của bạn là chính xác:</p>
+                            <div className="bg-slate-900 p-3 rounded border border-slate-700 mb-6 text-brand-teal font-mono text-sm break-words">
+                                {startPointAddress || "Chưa có địa chỉ"}
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setShowConfirmModal(false)}
+                                    className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded font-bold transition-colors"
+                                >
+                                    Hủy bỏ
+                                </button>
+                                <button
+                                    onClick={runRouteOptimization}
+                                    className="flex-1 py-2 bg-brand-teal hover:bg-teal-400 text-brand-dark rounded font-bold transition-colors"
+                                >
+                                    Xác nhận & Tối ưu
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Interactive Tour */}
             <InteractiveTour
@@ -863,6 +920,6 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
 
 
 
-        </div>
+        </div >
     );
 };
