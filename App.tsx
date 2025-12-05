@@ -29,7 +29,6 @@ const App: React.FC = () => {
         { id: 's2', name: 'Nguyen Thi Ha', phoneNumber: '090333444', licensePlate: '59-T2 67890', note: '' },
     ]);
     const [clusters, setClusters] = useState<Cluster[]>([]);
-    const [apiKey, setApiKey] = useState<string>(''); // Default or empty
     const [warehouse, setWarehouse] = useState<Coordinate | null>(null); // Lifted state
 
     const handleOrdersImported = (newOrders: Order[]) => {
@@ -171,8 +170,6 @@ const App: React.FC = () => {
                             orders={orders}
                             shippers={shippers}
                             onClustersGenerated={handleClustersGenerated}
-                            apiKey={apiKey}
-                            setApiKey={setApiKey}
                             warehouse={warehouse}
                             setWarehouse={setWarehouse}
                         />
@@ -186,7 +183,6 @@ const App: React.FC = () => {
                             onUpdateCluster={handleUpdateCluster}
                             onUpdateClusters={handleUpdateClusters}
                             onDeleteCluster={handleDeleteCluster}
-                            apiKey={apiKey}
                             warehouse={warehouse}
                         />
                     )}

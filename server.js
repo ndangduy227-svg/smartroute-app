@@ -73,6 +73,56 @@ app.post('/api/lark/routes', async (req, res) => {
     }
 });
 
+// Track Asia VRP Proxy
+app.post('/api/vrp/optimize', async (req, res) => {
+    try {
+        const apiKey = process.env.TRACK_ASIA_API_KEY;
+        if (!apiKey) {
+            return res.status(500).json({ error: 'Server configuration error: Missing API Key' });
+        }
+
+        const response = await fetch(`https://maps.track-asia.com/api/v1/vrp?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req.body)
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'VRP API Error');
+        }
+        res.json(data);
+    } catch (error) {
+        console.error('VRP Proxy Error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Track Asia Geocoding Proxy
+app.get('/api/vrp/geocode', async (req, res) => {
+    try {
+        const { text } = req.query;
+        const apiKey = process.env.TRACK_ASIA_API_KEY;
+
+        if (!apiKey) {
+            return res.status(500).json({ error: 'Server configuration error: Missing API Key' });
+        }
+
+        if (!text) {
+            return res.status(400).json({ error: 'Missing address text' });
+        }
+
+        const url = `https://maps.track-asia.com/api/v1/autocomplete?text=${encodeURIComponent(text)}&key=${apiKey}&lang=vi`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        res.json(data);
+    } catch (error) {
+        console.error('Geocoding Proxy Error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Catch-all handler for SPA
 // Catch-all handler for SPA
 app.use((req, res) => {

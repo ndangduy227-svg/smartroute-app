@@ -11,11 +11,10 @@ interface ResultsViewProps {
     onUpdateCluster: (cluster: Cluster) => void;
     onUpdateClusters: (clusters: Cluster[]) => void;
     onDeleteCluster: (clusterId: string) => void;
-    apiKey: string;
     warehouse: Coordinate | null;
 }
 
-export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, onComplete, onUpdateCluster, onUpdateClusters, onDeleteCluster, apiKey, warehouse }) => {
+export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, onComplete, onUpdateCluster, onUpdateClusters, onDeleteCluster, warehouse }) => {
     const [selectedClusterId, setSelectedClusterId] = useState<string | null>(clusters[0]?.id || null);
     const [viewMode, setViewMode] = useState<'MAP' | 'DETAILS' | 'KANBAN'>('MAP');
     const [isOptimizing, setIsOptimizing] = useState(false);
@@ -169,10 +168,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
 
     // --- RE-OPTIMIZE LOGIC ---
     const handleReoptimize = async (cluster: Cluster) => {
-        if (!apiKey) {
-            alert("Cần có API Key để tối ưu lại.");
-            return;
-        }
+
 
         setIsOptimizing(true);
         try {
@@ -188,11 +184,11 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
                 maxClusters: 1,
                 currency: 'VND' as const,
                 maxKmPerShipper: 500,
-                trackAsiaApiKey: apiKey,
+                geminiApiKey: '',
                 forceSingleVehicle: true // Force 1 vehicle to ensure single route output
             };
 
-            const newRoutes = await solveVRP(cluster.orders, origin, apiKey, config);
+            const newRoutes = await solveVRP(cluster.orders, origin, config);
 
             if (newRoutes.length > 0) {
                 // Fix: Merge all returned routes back into one cluster.
@@ -437,7 +433,6 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
                         <TrackAsiaMap
                             clusters={clusters}
                             shippers={shippers}
-                            apiKey={apiKey}
                             selectedClusterId={selectedClusterId}
                             onSelectCluster={setSelectedClusterId}
                         />

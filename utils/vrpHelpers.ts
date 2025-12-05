@@ -60,7 +60,7 @@ export const calculateDistance = (p1: Coordinate, p2: Coordinate): number => {
     return R * c; // Distance in km
 };
 
-export const geocodeAddress = async (address: string, apiKey: string): Promise<Coordinate | null> => {
+export const geocodeAddress = async (address: string): Promise<Coordinate | null> => {
     try {
         const cleanAddress = address.trim();
         if (!cleanAddress) return null;
@@ -70,8 +70,8 @@ export const geocodeAddress = async (address: string, apiKey: string): Promise<C
             ? cleanAddress
             : `${cleanAddress}, Việt Nam`;
 
-        // TrackAsia Autocomplete API (v1/autocomplete) - More reliable for address search
-        const url = `https://maps.track-asia.com/api/v1/autocomplete?text=${encodeURIComponent(queryAddress)}&key=${apiKey}&lang=vi`;
+        // Call Backend Proxy
+        const url = `/api/vrp/geocode?text=${encodeURIComponent(queryAddress)}`;
 
         const response = await fetch(url);
         const data = await response.json();
@@ -167,7 +167,7 @@ function decodePolyline(str: string, precision: number = 5): [number, number][] 
 
 // --- VRP SOLVER ---
 
-export const solveVRP = async (orders: Order[], origin: Coordinate, apiKey: string, config: RouteConfig): Promise<Cluster[]> => {
+export const solveVRP = async (orders: Order[], origin: Coordinate, config: RouteConfig): Promise<Cluster[]> => {
     // 1. Prepare Data for VRP API
     // TrackAsia VRP requires INTEGER IDs. We must map our String IDs to Integers.
 
@@ -228,9 +228,9 @@ export const solveVRP = async (orders: Order[], origin: Coordinate, apiKey: stri
         }
     };
 
-    // 2. Call API
-    console.log(`[DEBUG] Calling VRP API with payload:`, JSON.stringify(payload));
-    const response = await fetch(`https://maps.track-asia.com/api/v1/vrp?key=${apiKey}`, {
+    // 2. Call API Proxy
+    console.log(`[DEBUG] Calling VRP Proxy with payload:`, JSON.stringify(payload));
+    const response = await fetch(`/api/vrp/optimize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

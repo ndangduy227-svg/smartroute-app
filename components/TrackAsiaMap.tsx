@@ -7,7 +7,6 @@ import { Cluster, Shipper, Order } from '../types';
 interface TrackAsiaMapProps {
     clusters: Cluster[];
     shippers: Shipper[];
-    apiKey: string;
     selectedClusterId: string | null;
     onSelectCluster: (id: string) => void;
 }
@@ -57,14 +56,20 @@ const decodePolyline = (str: string, precision?: number) => {
     return coordinates;
 };
 
-export const TrackAsiaMap: React.FC<TrackAsiaMapProps> = ({ clusters, shippers, apiKey, selectedClusterId, onSelectCluster }) => {
+export const TrackAsiaMap: React.FC<TrackAsiaMapProps> = ({ clusters, shippers, selectedClusterId, onSelectCluster }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
     const markersRef = useRef<any[]>([]);
+    const apiKey = import.meta.env.VITE_TRACK_ASIA_API_KEY;
 
     // Initialize Map
     useEffect(() => {
         if (!mapContainerRef.current) return;
+
+        if (!apiKey) {
+            console.error("Missing VITE_TRACK_ASIA_API_KEY");
+            return;
+        }
 
         const map = new trackasiagl.Map({
             container: mapContainerRef.current,
@@ -80,7 +85,7 @@ export const TrackAsiaMap: React.FC<TrackAsiaMapProps> = ({ clusters, shippers, 
         return () => {
             map.remove();
         };
-    }, [apiKey]);
+    }, []);
 
     // Update Data
     useEffect(() => {
