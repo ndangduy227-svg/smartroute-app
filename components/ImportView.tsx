@@ -43,6 +43,20 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
         setErrorMsg('');
         setFileName(file.name);
 
+        // Validation: Size Limit (5MB)
+        const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+        if (file.size > MAX_SIZE) {
+            setErrorMsg('File quá lớn. Vui lòng chọn file nhỏ hơn 5MB.');
+            return;
+        }
+
+        // Validation: File Type
+        const allowedExtensions = /\.(xlsx|xls|csv|txt)$/i;
+        if (!file.name.match(allowedExtensions)) {
+            setErrorMsg('Định dạng file không hợp lệ. Chỉ chấp nhận .xlsx, .xls, .csv, .txt');
+            return;
+        }
+
         try {
             if (file.name.match(/\.(xlsx|xls)$/)) {
                 // Handle Excel
@@ -501,8 +515,9 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
                         </div>
                     </div>
                 </div>
+            )}
 
-            
+
             {/* Guide Modal */}
             {
                 guideType && (
