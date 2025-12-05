@@ -126,7 +126,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
                 ...sourceCluster,
                 orders: newTargetOrders,
                 geometry: '', // Clear geometry as it is now invalid
-                totalDistanceKm: 0,
+                totalDistanceKm: 0, // Reset metrics
                 estimatedCost: 0
             });
         } else {
@@ -493,10 +493,19 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
 
                                     {/* Footer Actions */}
                                     <div className="p-3 border-t border-slate-700 bg-slate-900/30">
+                                        {/* Warning for Stale Route */}
+                                        {!cluster.geometry && cluster.orders.length > 0 && (
+                                            <div className="mb-2 text-[10px] text-orange-400 text-center font-bold animate-pulse">
+                                                ⚠ Lộ trình đã thay đổi. Cần tối ưu lại!
+                                            </div>
+                                        )}
                                         <button
                                             onClick={() => handleReoptimize(cluster)}
                                             disabled={isOptimizing}
-                                            className="w-full py-2 bg-brand-purple/20 hover:bg-brand-purple/40 text-brand-purple text-xs font-bold rounded border border-brand-purple/50 transition-colors flex justify-center items-center gap-2"
+                                            className={`w-full py-2 text-xs font-bold rounded border transition-colors flex justify-center items-center gap-2 ${!cluster.geometry && cluster.orders.length > 0
+                                                    ? 'bg-orange-900/40 text-orange-400 border-orange-500/50 hover:bg-orange-900/60'
+                                                    : 'bg-brand-purple/20 hover:bg-brand-purple/40 text-brand-purple border-brand-purple/50'
+                                                }`}
                                         >
                                             {isOptimizing ? (
                                                 <span className="animate-spin">⟳</span>

@@ -74,16 +74,25 @@ export const geocodeAddress = async (address: string): Promise<Coordinate | null
         const url = `/api/vrp/geocode?text=${encodeURIComponent(queryAddress)}`;
 
         const response = await fetch(url);
+
+        if (!response.ok) {
+            console.warn(`Geocoding API error: ${response.status} ${response.statusText}`);
+            return null;
+        }
+
         const data = await response.json();
 
         // TrackAsia returns GeoJSON. features[0].geometry.coordinates is [lng, lat]
-        if (data && data.features && data.features.length > 0) {
-            const [lng, lat] = data.features[0].geometry.coordinates;
-            return { lat, lng };
-        } else {
-            console.warn(`Geocoding failed for ${address}`);
-            return null;
+        if (data && Array.isArray(data.features) && data.features.length > 0) {
+            const geometry = data.features[0].geometry;
+            if (geometry && Array.isArray(geometry.coordinates) && geometry.coordinates.length >= 2) {
+                const [lng, lat] = geometry.coordinates;
+                return { lat, lng };
+            }
         }
+
+        console.warn(`Geocoding failed for ${address}`);
+        return null;
     } catch (error) {
         console.error("Geocoding network error:", error);
         return null;
@@ -230,18 +239,31 @@ export const solveVRP = async (orders: Order[], origin: Coordinate, config: Rout
 
     // 2. Call API Proxy
     console.log(`[DEBUG] Calling VRP Proxy with payload:`, JSON.stringify(payload));
-    const response = await fetch(`/api/vrp/optimize`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
 
-    const data = await response.json();
+    let data;
+    try {
+        const response = await fetch(`/api/vrp/optimize`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`VRP API Error: ${response.status} - ${errorText}`);
+        }
+
+        data = await response.json();
+    } catch (error: any) {
+        console.error("VRP Network/Server Error:", error);
+        throw new Error("Failed to connect to VRP service. " + error.message);
+    }
+
     console.log(`[DEBUG] VRP Response:`, data);
 
-    if (!data || !data.routes) {
+    if (!data || !data.routes || !Array.isArray(data.routes)) {
         console.error("VRP Response Error:", data);
-        throw new Error("VRP API did not return routes. " + (data.error || data.message || "Unknown error"));
+        throw new Error("VRP API did not return valid routes. " + (data?.error || data?.message || "Unknown error"));
     }
 
     // 3. Parse Response into Clusters

@@ -18,8 +18,6 @@ export const fetchPoscakeOrders = async (shopId, accessToken) => {
         }
 
         // Fetch orders from POSCake
-        // Documentation: GET /shops/{SHOP_ID}/orders
-        // Research indicates 'api_key' is the common param for Pancake POS
         const response = await axios.get(`${POSCAKE_API_BASE}/shops/${targetShopId}/orders`, {
             params: {
                 api_key: token,
@@ -28,17 +26,11 @@ export const fetchPoscakeOrders = async (shopId, accessToken) => {
             }
         });
 
-        if (response.data.success) {
-            // Transform POSCake orders to Smart Route format
-            // POSCake Order Structure:
-            // {
-            //   id: 1418,
-            //   bill_full_name: "Hoang Anh",
-            //   shipping_address: { full_address: "..." },
-            //   items: [ ... ]
-            // }
+        if (response.data && response.data.success) {
+            // Defensive check: Ensure response.data.data is an array
+            const ordersData = Array.isArray(response.data.data) ? response.data.data : [];
 
-            return response.data.data.map(order => ({
+            return ordersData.map(order => ({
                 id: String(order.id),
                 customerName: order.bill_full_name || 'Unknown Customer',
                 address: order.shipping_address?.full_address || order.shipping_address?.address || 'No Address',
@@ -48,14 +40,15 @@ export const fetchPoscakeOrders = async (shopId, accessToken) => {
             }));
         } else {
             console.error('POSCake API Failed Response:', response.data);
-            throw new Error(response.data.message || 'Failed to fetch orders from POSCake (Success=false)');
+            // Return empty array instead of throwing to prevent app crash, but log error
+            return [];
         }
     } catch (error) {
         console.error('POSCake API Error:', error.message);
         if (error.response) {
             console.error('POSCake API Error Data:', error.response.data);
-            throw new Error(error.response.data?.message || `API Error: ${error.response.status} ${error.response.statusText}`);
         }
-        throw error;
+        // Return empty array on error to keep app stable
+        return [];
     }
 };
