@@ -4,9 +4,9 @@ import { RawOrder, Order, OrderStatus, FieldMapping } from '../types';
 import { MOCK_ORDERS_CSV } from '../constants';
 import { ImportGuideModal, GuideType } from './ImportGuideModal';
 // Assets
-import larkLogo from '../assets/lark_logo.png';
-import pancakeLogo from '../assets/pancake_logo.png';
-import gsheetLogo from '../assets/gsheet_logo.png';
+import larkLogo from '../assets/Logo App Partner - Smart Route/lark_logo_transparent-1.png';
+import pancakeLogo from '../assets/Logo App Partner - Smart Route/Pancake Logo.png';
+import gsheetLogo from '../assets/Logo App Partner - Smart Route/google sheet logo transparent2.png';
 
 // @ts-ignore
 import * as XLSX from 'xlsx';
@@ -309,11 +309,11 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Google Sheet Card */}
                         <div className="bg-slate-800 rounded-xl border border-slate-700 p-5 hover:border-green-500/50 transition-all group relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <div className="absolute top-0 right-0 p-2 opacity-30 group-hover:opacity-40 transition-opacity">
                                 <img src={gsheetLogo} alt="Google Sheet" className="w-24 h-24 object-contain" />
                             </div>
                             <div className="flex justify-between items-start mb-4 relative z-10">
-                                <img src={gsheetLogo} alt="Google Sheet" className="w-10 h-10 object-contain" />
+                                <img src={gsheetLogo} alt="Google Sheet" className="w-12 h-12 object-contain" />
                                 <button
                                     onClick={() => setGuideType('GSHEET')}
                                     className="text-xs font-bold text-green-400 hover:text-green-300 flex items-center gap-1 bg-green-900/30 px-2 py-1 rounded"
@@ -343,11 +343,11 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
 
                         {/* Lark Base Card */}
                         <div className="bg-slate-800 rounded-xl border border-slate-700 p-5 hover:border-blue-500/50 transition-all group relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <div className="absolute top-0 right-0 p-2 opacity-30 group-hover:opacity-40 transition-opacity">
                                 <img src={larkLogo} alt="Lark" className="w-24 h-24 object-contain" />
                             </div>
                             <div className="flex justify-between items-start mb-4 relative z-10">
-                                <img src={larkLogo} alt="Lark" className="w-10 h-10 object-contain" />
+                                <img src={larkLogo} alt="Lark" className="w-12 h-12 object-contain" />
                                 <button
                                     onClick={() => setGuideType('LARK')}
                                     className="text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 bg-blue-900/30 px-2 py-1 rounded"
@@ -428,11 +428,11 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
 
                         {/* POSCake Card */}
                         <div className="bg-slate-800 rounded-xl border border-slate-700 p-5 hover:border-brand-teal/50 transition-all group relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <div className="absolute top-0 right-0 p-2 opacity-30 group-hover:opacity-40 transition-opacity">
                                 <img src={pancakeLogo} alt="POSCake" className="w-24 h-24 object-contain" />
                             </div>
                             <div className="flex justify-between items-start mb-4 relative z-10">
-                                <img src={pancakeLogo} alt="POSCake" className="w-10 h-10 object-contain" />
+                                <img src={pancakeLogo} alt="POSCake" className="w-12 h-12 object-contain" />
                                 <button
                                     onClick={() => setGuideType('POSCAKE')}
                                     className="text-xs font-bold text-brand-teal hover:text-teal-300 flex items-center gap-1 bg-teal-900/30 px-2 py-1 rounded"
