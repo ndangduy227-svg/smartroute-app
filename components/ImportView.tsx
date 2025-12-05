@@ -501,91 +501,89 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
                         </div>
                     </div>
                 </div>
-            </div>
-    )
-}
 
-{/* Guide Modal */ }
-{
-    guideType && (
-        <ImportGuideModal
-            isOpen={!!guideType}
-            onClose={() => setGuideType(null)}
-            type={guideType}
-        />
-    )
-}
+            
+            {/* Guide Modal */}
+            {
+                guideType && (
+                    <ImportGuideModal
+                        isOpen={!!guideType}
+                        onClose={() => setGuideType(null)}
+                        type={guideType}
+                    />
+                )
+            }
 
-{
-    step === 2 && (
-        <div className="bg-slate-900 border border-slate-700 rounded-xl p-6">
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h3 className="text-xl font-semibold text-brand-teal">Ánh xạ cột dữ liệu</h3>
-                    <p className="text-gray-400 text-sm">Tệp: {fileName}</p>
-                </div>
-                <div className="text-sm text-gray-500">
-                    Tìm thấy {parsedRows.length} dòng
-                </div>
-            </div>
+            {
+                step === 2 && (
+                    <div className="bg-slate-900 border border-slate-700 rounded-xl p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 className="text-xl font-semibold text-brand-teal">Ánh xạ cột dữ liệu</h3>
+                                <p className="text-gray-400 text-sm">Tệp: {fileName}</p>
+                            </div>
+                            <div className="text-sm text-gray-500">
+                                Tìm thấy {parsedRows.length} dòng
+                            </div>
+                        </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {Object.keys(mapping).map((field) => (
-                    <div key={field} className="flex flex-col">
-                        <label className="mb-2 text-sm font-medium text-gray-300 capitalize">
-                            {field.replace(/([A-Z])/g, ' $1').trim()} <span className="text-red-400">*</span>
-                        </label>
-                        <select
-                            value={mapping[field as keyof FieldMapping]}
-                            onChange={(e) => setMapping({ ...mapping, [field as keyof FieldMapping]: e.target.value })}
-                            className="bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-brand-teal focus:border-transparent outline-none"
-                        >
-                            <option value="">-- Chọn cột tương ứng --</option>
-                            {headers.map(h => (
-                                <option key={h} value={h}>{h}</option>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {Object.keys(mapping).map((field) => (
+                                <div key={field} className="flex flex-col">
+                                    <label className="mb-2 text-sm font-medium text-gray-300 capitalize">
+                                        {field.replace(/([A-Z])/g, ' $1').trim()} <span className="text-red-400">*</span>
+                                    </label>
+                                    <select
+                                        value={mapping[field as keyof FieldMapping]}
+                                        onChange={(e) => setMapping({ ...mapping, [field as keyof FieldMapping]: e.target.value })}
+                                        className="bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-brand-teal focus:border-transparent outline-none"
+                                    >
+                                        <option value="">-- Chọn cột tương ứng --</option>
+                                        {headers.map(h => (
+                                            <option key={h} value={h}>{h}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             ))}
-                        </select>
+                        </div>
+
+                        <div className="mt-8 flex justify-end gap-3">
+                            <button
+                                onClick={() => { setStep(1); setParsedRows([]); setHeaders([]); }}
+                                className="px-4 py-2 text-gray-400 hover:text-white"
+                            >
+                                Quay lại
+                            </button>
+                            <button
+                                onClick={handleConfirmMapping}
+                                className="bg-brand-purple hover:bg-indigo-500 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-lg shadow-indigo-500/20"
+                            >
+                                Xác nhận & Nhập
+                            </button>
+                        </div>
+
+                        <div className="mt-8 border-t border-slate-700 pt-4">
+                            <h4 className="text-sm font-semibold text-gray-400 mb-2">Xem trước (3 dòng đầu)</h4>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left text-gray-400">
+                                    <thead className="text-xs uppercase bg-slate-800 text-gray-300">
+                                        <tr>
+                                            {headers.map(h => <th key={h} className="px-4 py-2 whitespace-nowrap">{h}</th>)}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {parsedRows.slice(0, 3).map((row, i) => (
+                                            <tr key={i} className="border-b border-slate-700">
+                                                {headers.map(h => <td key={h} className="px-4 py-2 whitespace-nowrap">{row[h]}</td>)}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-                ))}
-            </div>
-
-            <div className="mt-8 flex justify-end gap-3">
-                <button
-                    onClick={() => { setStep(1); setParsedRows([]); setHeaders([]); }}
-                    className="px-4 py-2 text-gray-400 hover:text-white"
-                >
-                    Quay lại
-                </button>
-                <button
-                    onClick={handleConfirmMapping}
-                    className="bg-brand-purple hover:bg-indigo-500 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-lg shadow-indigo-500/20"
-                >
-                    Xác nhận & Nhập
-                </button>
-            </div>
-
-            <div className="mt-8 border-t border-slate-700 pt-4">
-                <h4 className="text-sm font-semibold text-gray-400 mb-2">Xem trước (3 dòng đầu)</h4>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-400">
-                        <thead className="text-xs uppercase bg-slate-800 text-gray-300">
-                            <tr>
-                                {headers.map(h => <th key={h} className="px-4 py-2 whitespace-nowrap">{h}</th>)}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {parsedRows.slice(0, 3).map((row, i) => (
-                                <tr key={i} className="border-b border-slate-700">
-                                    {headers.map(h => <td key={h} className="px-4 py-2 whitespace-nowrap">{row[h]}</td>)}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    )
-}
+                )
+            }
         </div >
     );
 };
