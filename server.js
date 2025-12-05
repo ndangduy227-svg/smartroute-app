@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import rateLimit from 'express-rate-limit';
 import { fetchLarkRecords, createLarkRecords } from './larkService.js';
 
 dotenv.config();
@@ -11,6 +12,19 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Rate Limiters
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 20, // Limit each IP to 20 requests per windowMs
+    message: { error: 'Too many requests, please try again later.' }
+});
+
+const geocodeLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 60, // Limit each IP to 60 requests per windowMs
+    message: { error: 'Too many geocoding requests, please slow down.' }
+});
 
 // Middleware
 app.use(express.json());
@@ -74,8 +88,13 @@ app.post('/api/lark/routes', async (req, res) => {
 });
 
 // Track Asia VRP Proxy
-app.post('/api/vrp/optimize', async (req, res) => {
+app.post('/api/vrp/optimize', apiLimiter, async (req, res) => {
     try {
+        // Input Validation
+        if (!req.body.jobs || !Array.isArray(req.body.jobs)) {
+            return res.status(400).json({ error: "Invalid payload: 'jobs' array is required" });
+        }
+
         const apiKey = process.env.TRACK_ASIA_API_KEY;
         if (!apiKey) {
             return res.status(500).json({ error: 'Server configuration error: Missing API Key' });
@@ -99,7 +118,7 @@ app.post('/api/vrp/optimize', async (req, res) => {
 });
 
 // Track Asia Geocoding Proxy
-app.get('/api/vrp/geocode', async (req, res) => {
+app.get('/api/vrp/geocode', geocodeLimiter, async (req, res) => {
     try {
         const { text } = req.query;
         const apiKey = process.env.TRACK_ASIA_API_KEY;
@@ -123,7 +142,6 @@ app.get('/api/vrp/geocode', async (req, res) => {
     }
 });
 
-// Catch-all handler for SPA
 // Catch-all handler for SPA
 app.use((req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
