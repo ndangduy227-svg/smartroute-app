@@ -12,9 +12,10 @@ interface ResultsViewProps {
     onUpdateClusters: (clusters: Cluster[]) => void;
     onDeleteCluster: (clusterId: string) => void;
     warehouse: Coordinate | null;
+    apiKey?: string;
 }
 
-export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, onComplete, onUpdateCluster, onUpdateClusters, onDeleteCluster, warehouse }) => {
+export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, onComplete, onUpdateCluster, onUpdateClusters, onDeleteCluster, warehouse, apiKey }) => {
     const [selectedClusterId, setSelectedClusterId] = useState<string | null>(clusters[0]?.id || null);
     const [viewMode, setViewMode] = useState<'MAP' | 'DETAILS' | 'KANBAN'>('MAP');
     const [isOptimizing, setIsOptimizing] = useState(false);
@@ -435,6 +436,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
                             shippers={shippers}
                             selectedClusterId={selectedClusterId}
                             onSelectCluster={setSelectedClusterId}
+                            apiKey={apiKey}
                         />
                     ) : viewMode === 'KANBAN' ? (
                         <div className="h-full overflow-x-auto overflow-y-hidden p-4 flex gap-4">
@@ -503,8 +505,8 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
                                             onClick={() => handleReoptimize(cluster)}
                                             disabled={isOptimizing}
                                             className={`w-full py-2 text-xs font-bold rounded border transition-colors flex justify-center items-center gap-2 ${!cluster.geometry && cluster.orders.length > 0
-                                                    ? 'bg-orange-900/40 text-orange-400 border-orange-500/50 hover:bg-orange-900/60'
-                                                    : 'bg-brand-purple/20 hover:bg-brand-purple/40 text-brand-purple border-brand-purple/50'
+                                                ? 'bg-orange-900/40 text-orange-400 border-orange-500/50 hover:bg-orange-900/60'
+                                                : 'bg-brand-purple/20 hover:bg-brand-purple/40 text-brand-purple border-brand-purple/50'
                                                 }`}
                                         >
                                             {isOptimizing ? (
