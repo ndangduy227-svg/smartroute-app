@@ -4,7 +4,7 @@ import { useAuth } from './AuthContext';
 import { BRAND_LOGOS } from '../constants';
 
 export const LoginView: React.FC = () => {
-    const { loginWithGoogle } = useAuth();
+    const { loginWithGoogle, error } = useAuth();
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-slate-100 p-4">
@@ -15,6 +15,12 @@ export const LoginView: React.FC = () => {
             <div className="bg-slate-800 p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-700">
                 <h1 className="text-3xl font-bold mb-2 text-center text-white">Welcome Back</h1>
                 <p className="text-gray-400 text-center mb-8">Sign in to access your dashboard</p>
+
+                {error && (
+                    <div className="bg-red-500/10 border border-red-500 text-red-500 p-3 rounded-lg mb-4 text-sm text-center">
+                        {error}
+                    </div>
+                )}
 
                 <button
                     onClick={loginWithGoogle}
