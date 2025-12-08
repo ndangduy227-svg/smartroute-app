@@ -1,17 +1,39 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { Cluster, Shipper } from '../types';
+import { User } from 'firebase/auth';
+import { FirestoreService } from '../services/FirestoreService';
 
 interface HistoryViewProps {
     clusters: Cluster[];
     shippers: Shipper[];
+    user: User | null;
 }
 
-export const HistoryView: React.FC<HistoryViewProps> = ({ clusters, shippers }) => {
+export const HistoryView: React.FC<HistoryViewProps> = ({ clusters: propClusters, shippers, user }) => {
     const [filterDate, setFilterDate] = useState('');
     const [filterText, setFilterText] = useState('');
+    const [historyClusters, setHistoryClusters] = useState<Cluster[]>([]);
 
-    const filteredClusters = clusters.filter(c => {
+    React.useEffect(() => {
+        if (user) {
+            const fetchHistory = async () => {
+                const data = await FirestoreService.getHistory(user.uid);
+                // Flatten data: History documents contain { clusters: Cluster[] }
+                // @ts-ignore
+                const flatClusters = data.flatMap(d => d.clusters || []);
+                setHistoryClusters(flatClusters);
+            };
+            fetchHistory();
+        }
+    }, [user]);
+
+    // Merge Prop Clusters (Current Session) with History Clusters (Firestore)
+    // Remove duplicates if any (by ID)
+    const allClusters = [...propClusters, ...historyClusters];
+    const uniqueClusters = Array.from(new Map(allClusters.map(c => [c.id, c])).values());
+
+    const filteredClusters = uniqueClusters.filter(c => {
         if (!c.isReconciled) return false;
 
         // Date Filter (using createdAt timestamp)
@@ -145,8 +167,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ clusters, shippers }) 
                                                     <td className="px-4 py-2 text-right font-mono">{o.cod.toLocaleString()}</td>
                                                     <td className="px-4 py-2 text-center">
                                                         <span className={`text-xs font-bold ${o.status === 'completed' ? 'text-green-400' :
-                                                                o.status === 'failed' ? 'text-red-400' :
-                                                                    'text-yellow-400'
+                                                            o.status === 'failed' ? 'text-red-400' :
+                                                                'text-yellow-400'
                                                             }`}>
                                                             {o.status === 'completed' ? 'Hoàn thành' : o.status === 'failed' ? 'Thất bại' : o.status}
                                                         </span>

@@ -12,32 +12,43 @@ interface PlanningViewProps {
     onClustersGenerated: (clusters: Cluster[]) => void;
     warehouse: Coordinate | null;
     setWarehouse: (coord: Coordinate | null) => void;
+    apiKey?: string;
+    onApiKeyChange?: (key: string) => void;
 }
 
 // Helper to calculate distance between two points (Haversine formula)
 // MOVED TO utils/vrpHelpers.ts
 
-export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, onClustersGenerated, warehouse, setWarehouse }) => {
+export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, onClustersGenerated, warehouse, setWarehouse, apiKey, onApiKeyChange }) => {
     // Config State
     const [config, setConfig] = useState<RouteConfig>({
         startPoints: [],
         maxOrdersPerShipper: 15,
         maxClusters: 5,
-        costPerKm: 10000, // 10k VND per km
-        costPerPoint: 5000, // 5k VND per point (default)
+        costPerKm: 10000,
+        costPerPoint: 5000,
         currency: 'VND',
         maxKmPerShipper: 100,
 
         geminiApiKey: ''
     });
 
-    // API Key State
-    const [trackAsiaApiKey, setTrackAsiaApiKey] = useState<string>(() => localStorage.getItem('trackAsiaApiKey') || '');
+    // API Key State - Sync with prop if available, else local storage
+    const [trackAsiaApiKey, setTrackAsiaApiKey] = useState<string>(() => apiKey || localStorage.getItem('trackAsiaApiKey') || '');
     const [showApiKeyModal, setShowApiKeyModal] = useState(false);
 
+    // Update local state when prop changes (from Firestore)
+    useEffect(() => {
+        if (apiKey && apiKey !== trackAsiaApiKey) {
+            setTrackAsiaApiKey(apiKey);
+        }
+    }, [apiKey]);
+
+    // Persist changes
     useEffect(() => {
         if (trackAsiaApiKey) {
             localStorage.setItem('trackAsiaApiKey', trackAsiaApiKey);
+            if (onApiKeyChange) onApiKeyChange(trackAsiaApiKey);
         }
     }, [trackAsiaApiKey]);
 

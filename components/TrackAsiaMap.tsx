@@ -9,6 +9,7 @@ interface TrackAsiaMapProps {
     shippers: Shipper[];
     selectedClusterId: string | null;
     onSelectCluster: (id: string) => void;
+    apiKey?: string; // Optional prop
 }
 
 // Polyline Decoder (from Google Maps Polyline Algorithm)
@@ -56,11 +57,11 @@ const decodePolyline = (str: string, precision?: number) => {
     return coordinates;
 };
 
-export const TrackAsiaMap: React.FC<TrackAsiaMapProps> = ({ clusters, shippers, selectedClusterId, onSelectCluster }) => {
+export const TrackAsiaMap: React.FC<TrackAsiaMapProps> = ({ clusters, shippers, selectedClusterId, onSelectCluster, apiKey: propApiKey }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
     const markersRef = useRef<any[]>([]);
-    const apiKey = import.meta.env.VITE_TRACK_ASIA_API_KEY;
+    const apiKey = propApiKey || import.meta.env.VITE_TRACK_ASIA_API_KEY;
 
     // Initialize Map
     useEffect(() => {

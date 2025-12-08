@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { useAuth } from './components/AuthContext';
 import { BRAND_LOGOS } from './constants';
 import { ImportView } from './components/ImportView';
 import { PlanningView } from './components/PlanningView';
@@ -11,6 +12,7 @@ import { UserGuide } from './components/UserGuide';
 import { AuthProvider } from './components/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ViewState, Order, Shipper, Cluster, OrderStatus, Coordinate } from './types';
+import { FirestoreService } from './services/FirestoreService';
 
 // Icons
 const Icons = {
@@ -33,6 +35,66 @@ const App: React.FC = () => {
     ]);
     const [clusters, setClusters] = useState<Cluster[]>([]);
     const [warehouse, setWarehouse] = useState<Coordinate | null>(null); // Lifted state
+    const [apiKey, setApiKey] = useState<string>(import.meta.env.VITE_TRACK_ASIA_API_KEY || '');
+
+    const { user, logout } = useAuth();
+
+    // --- Persistence & Sync ---
+
+    // Load Data on Login
+    React.useEffect(() => {
+        if (!user) return;
+
+        const loadData = async () => {
+            // 1. Save Profile
+            await FirestoreService.saveUserProfile(user);
+
+            // 2. Load Shippers
+            const savedShippers = await FirestoreService.getShippers(user.uid);
+            if (savedShippers) setShippers(savedShippers);
+
+            // 3. Load Current Batch
+            const savedBatch = await FirestoreService.getCurrentBatch(user.uid);
+            if (savedBatch) {
+                // @ts-ignore
+                if (savedBatch.orders) setOrders(savedBatch.orders);
+                // @ts-ignore
+                if (savedBatch.clusters) setClusters(savedBatch.clusters);
+                // @ts-ignore
+                if (savedBatch.warehouse) setWarehouse(savedBatch.warehouse);
+                // If we have data, go to Planning or Results
+                if (savedBatch.clusters && savedBatch.clusters.length > 0) {
+                    setView('RESULTS');
+                } else if (savedBatch.orders && savedBatch.orders.length > 0) {
+                    setView('PLANNING');
+                }
+            }
+
+            // 4. Load API Key
+            const savedKey = await FirestoreService.getApiKey(user.uid);
+            if (savedKey) setApiKey(savedKey);
+        };
+
+        loadData();
+    }, [user]);
+
+    // Save Shippers (throttled/debounced ideally, but direct for now)
+    React.useEffect(() => {
+        if (user && shippers.length > 0) {
+            FirestoreService.saveShippers(user.uid, shippers);
+        }
+    }, [shippers, user]);
+
+    // Save Current Batch
+    React.useEffect(() => {
+        if (user) {
+            const hasData = orders.length > 0 || clusters.length > 0;
+            if (hasData) {
+                FirestoreService.saveCurrentBatch(user.uid, { orders, clusters, warehouse });
+            }
+        }
+    }, [orders, clusters, warehouse, user]);
+
 
     const handleOrdersImported = (newOrders: Order[]) => {
         setOrders(newOrders);
@@ -61,12 +123,24 @@ const App: React.FC = () => {
     const handleCompleteClusters = (completed: Cluster[]) => {
         // Logic for moving to history would go here
         const completedIds = new Set(completed.map(c => c.id));
-        setClusters(clusters.map(c => completedIds.has(c.id) ? { ...c, isCompleted: true } : c));
-        // In a real app, update individual order status to COMPLETED
+        const updatedClusters = clusters.map(c => completedIds.has(c.id) ? { ...c, isCompleted: true } : c);
+        setClusters(updatedClusters);
     };
 
     const handleFinalizeCluster = (clusterId: string) => {
         setClusters(clusters.map(c => c.id === clusterId ? { ...c, isReconciled: true } : c));
+
+        // Save to History in Firestore
+        if (user) {
+            const cluster = clusters.find(c => c.id === clusterId);
+            if (cluster) {
+                FirestoreService.addToHistory(user.uid, {
+                    orders: cluster.orders,
+                    clusters: [{ ...cluster, isReconciled: true }],
+                    timestamp: new Date().toISOString()
+                });
+            }
+        }
     };
 
     const handleDeleteCluster = (clusterId: string) => {
@@ -133,7 +207,7 @@ const App: React.FC = () => {
                                 Lịch Sử Đơn Hàng
                             </button>
 
-                            <div className="mt-auto pt-4 border-t border-slate-800">
+                            <div className="mt-auto pt-4 border-t border-slate-800 space-y-3">
                                 <button
                                     onClick={() => setShowGuide(true)}
                                     className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-brand-purple hover:bg-slate-800 hover:text-white transition-all font-bold"
@@ -141,6 +215,28 @@ const App: React.FC = () => {
                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                     Hướng dẫn sử dụng
                                 </button>
+
+                                {/* User Profile */}
+                                <div className="flex items-center gap-3 p-3 bg-slate-800 rounded-xl border border-slate-700">
+                                    {user?.photoURL ? (
+                                        <img src={user.photoURL} alt="User" className="w-10 h-10 rounded-full border-2 border-brand-teal" />
+                                    ) : (
+                                        <div className="w-10 h-10 rounded-full bg-brand-teal text-slate-900 flex items-center justify-center font-bold text-lg">
+                                            {user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}
+                                        </div>
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-bold text-white truncate">{user?.displayName || 'User'}</p>
+                                        <p className="text-xs text-gray-400 truncate w-full" title={user?.email || ''}>{user?.email}</p>
+                                    </div>
+                                    <button
+                                        onClick={logout}
+                                        className="text-gray-400 hover:text-red-400 transition-colors p-2 hover:bg-slate-700 rounded-lg"
+                                        title="Sign Out"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                                    </button>
+                                </div>
                             </div>
                         </nav>
 
@@ -170,27 +266,29 @@ const App: React.FC = () => {
                         <div className="relative z-0 h-full overflow-y-auto">
                             {view === 'IMPORT' && <ImportView onOrdersImported={handleOrdersImported} />}
 
-                            {view === 'PLANNING' && (
-                                <PlanningView
-                                    orders={orders}
-                                    shippers={shippers}
-                                    onClustersGenerated={handleClustersGenerated}
-                                    warehouse={warehouse}
-                                    setWarehouse={setWarehouse}
-                                />
-                            )}
+                            <PlanningView
+                                orders={orders}
+                                shippers={shippers}
+                                onClustersGenerated={handleClustersGenerated}
+                                warehouse={warehouse}
+                                setWarehouse={setWarehouse}
+                                apiKey={apiKey}
+                                onApiKeyChange={(key) => {
+                                    setApiKey(key);
+                                    if (user) FirestoreService.saveApiKey(user.uid, key);
+                                }}
+                            />
 
-                            {view === 'RESULTS' && (
-                                <ResultsView
-                                    clusters={clusters.filter(c => !c.isCompleted)}
-                                    shippers={shippers}
-                                    onComplete={handleCompleteClusters}
-                                    onUpdateCluster={handleUpdateCluster}
-                                    onUpdateClusters={handleUpdateClusters}
-                                    onDeleteCluster={handleDeleteCluster}
-                                    warehouse={warehouse}
-                                />
-                            )}
+                            <ResultsView
+                                clusters={clusters.filter(c => !c.isCompleted)}
+                                shippers={shippers}
+                                onComplete={handleCompleteClusters}
+                                onUpdateCluster={handleUpdateCluster}
+                                onUpdateClusters={handleUpdateClusters}
+                                onDeleteCluster={handleDeleteCluster}
+                                warehouse={warehouse}
+                                apiKey={apiKey}
+                            />
 
                             {view === 'RECONCILIATION' && (
                                 <ReconciliationView
@@ -212,6 +310,7 @@ const App: React.FC = () => {
                                 <HistoryView
                                     clusters={clusters}
                                     shippers={shippers}
+                                    user={user}
                                 />
                             )}
                         </div>
