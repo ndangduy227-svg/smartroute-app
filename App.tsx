@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { BRAND_LOGOS } from './constants';
 import { ImportView } from './components/ImportView';
@@ -7,6 +8,8 @@ import { ReconciliationView } from './components/ReconciliationView';
 import { HistoryView } from './components/HistoryView';
 import { ShipperManager } from './components/ShipperManager';
 import { UserGuide } from './components/UserGuide';
+import { AuthProvider } from './components/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { ViewState, Order, Shipper, Cluster, OrderStatus, Coordinate } from './types';
 
 // Icons
@@ -73,147 +76,151 @@ const App: React.FC = () => {
     };
 
     return (
-        <div className="flex min-h-screen bg-brand-dark text-slate-100 font-sans">
-            {/* Sidebar */}
-            <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col fixed h-full z-10 no-print">
-                <div className="p-6">
-                    <div className="transform scale-90 origin-left">
-                        {BRAND_LOGOS.smartRoute_full}
-                    </div>
-                </div>
-
-                <nav className="flex-1 px-4 space-y-2 mt-4">
-                    <button
-                        onClick={() => setView('IMPORT')}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${view === 'IMPORT' ? 'bg-brand-teal text-brand-dark font-bold shadow-[0_0_15px_rgba(45,225,194,0.3)]' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}
-                    >
-                        <Icons.Upload />
-                        Import Đơn Hàng
-                    </button>
-                    <button
-                        onClick={() => setView('PLANNING')}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${view === 'PLANNING' ? 'bg-brand-teal text-brand-dark font-bold shadow-[0_0_15px_rgba(45,225,194,0.3)]' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}
-                    >
-                        <Icons.Map />
-                        Lập Kế Hoạch
-                    </button>
-                    <button
-                        onClick={() => setView('RESULTS')}
-                        disabled={clusters.length === 0}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${view === 'RESULTS' ? 'bg-brand-teal text-brand-dark font-bold shadow-[0_0_15px_rgba(45,225,194,0.3)]' : clusters.length === 0 ? 'opacity-50 cursor-not-allowed text-gray-600' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}
-                    >
-                        <Icons.Truck />
-                        Kết Quả Lộ Trình
-                    </button>
-                    <button
-                        onClick={() => setView('RECONCILIATION')}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${view === 'RECONCILIATION' ? 'bg-brand-teal text-brand-dark font-bold shadow-[0_0_15px_rgba(45,225,194,0.3)]' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}
-                    >
-                        <Icons.Check />
-                        Đối Soát
-                    </button>
-                    <div className="h-px bg-slate-800 my-4 mx-2"></div>
-                    <button
-                        onClick={() => setView('SHIPPERS')}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${view === 'SHIPPERS' ? 'bg-brand-teal text-brand-dark font-bold shadow-[0_0_15px_rgba(45,225,194,0.3)]' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}
-                    >
-                        <Icons.Users />
-                        Quản Lý Tài Xế
-                    </button>
-                    <button
-                        onClick={() => setView('HISTORY')}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${view === 'HISTORY' ? 'bg-brand-teal text-brand-dark font-bold shadow-[0_0_15px_rgba(45,225,194,0.3)]' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}
-                    >
-                        <Icons.History />
-                        Lịch Sử Đơn Hàng
-                    </button>
-
-                    <div className="mt-auto pt-4 border-t border-slate-800">
-                        <button
-                            onClick={() => setShowGuide(true)}
-                            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-brand-purple hover:bg-slate-800 hover:text-white transition-all font-bold"
-                        >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            Hướng dẫn sử dụng
-                        </button>
-                    </div>
-                </nav>
-
-                <div className="p-6 border-t border-slate-800">
-                    <div className="bg-slate-800 rounded-lg p-3">
-                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Trạng Thái</p>
-                        <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-300">Chờ xử lý</span>
-                            <span className="text-brand-teal font-mono">{orders.filter(o => o.status === OrderStatus.PENDING).length}</span>
+        <AuthProvider>
+            <ProtectedRoute>
+                <div className="flex min-h-screen bg-brand-dark text-slate-100 font-sans">
+                    {/* Sidebar */}
+                    <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col fixed h-full z-10 no-print">
+                        <div className="p-6">
+                            <div className="transform scale-90 origin-left">
+                                {BRAND_LOGOS.smartRoute_full}
+                            </div>
                         </div>
-                        <div className="flex justify-between items-center text-sm mt-1">
-                            <span className="text-gray-300">Đã điều phối</span>
-                            <span className="text-brand-purple font-mono">{orders.filter(o => o.status === OrderStatus.ROUTED).length}</span>
+
+                        <nav className="flex-1 px-4 space-y-2 mt-4">
+                            <button
+                                onClick={() => setView('IMPORT')}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${view === 'IMPORT' ? 'bg-brand-teal text-brand-dark font-bold shadow-[0_0_15px_rgba(45,225,194,0.3)]' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}
+                            >
+                                <Icons.Upload />
+                                Import Đơn Hàng
+                            </button>
+                            <button
+                                onClick={() => setView('PLANNING')}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${view === 'PLANNING' ? 'bg-brand-teal text-brand-dark font-bold shadow-[0_0_15px_rgba(45,225,194,0.3)]' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}
+                            >
+                                <Icons.Map />
+                                Lập Kế Hoạch
+                            </button>
+                            <button
+                                onClick={() => setView('RESULTS')}
+                                disabled={clusters.length === 0}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${view === 'RESULTS' ? 'bg-brand-teal text-brand-dark font-bold shadow-[0_0_15px_rgba(45,225,194,0.3)]' : clusters.length === 0 ? 'opacity-50 cursor-not-allowed text-gray-600' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}
+                            >
+                                <Icons.Truck />
+                                Kết Quả Lộ Trình
+                            </button>
+                            <button
+                                onClick={() => setView('RECONCILIATION')}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${view === 'RECONCILIATION' ? 'bg-brand-teal text-brand-dark font-bold shadow-[0_0_15px_rgba(45,225,194,0.3)]' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}
+                            >
+                                <Icons.Check />
+                                Đối Soát
+                            </button>
+                            <div className="h-px bg-slate-800 my-4 mx-2"></div>
+                            <button
+                                onClick={() => setView('SHIPPERS')}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${view === 'SHIPPERS' ? 'bg-brand-teal text-brand-dark font-bold shadow-[0_0_15px_rgba(45,225,194,0.3)]' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}
+                            >
+                                <Icons.Users />
+                                Quản Lý Tài Xế
+                            </button>
+                            <button
+                                onClick={() => setView('HISTORY')}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${view === 'HISTORY' ? 'bg-brand-teal text-brand-dark font-bold shadow-[0_0_15px_rgba(45,225,194,0.3)]' : 'text-gray-400 hover:bg-slate-800 hover:text-white'}`}
+                            >
+                                <Icons.History />
+                                Lịch Sử Đơn Hàng
+                            </button>
+
+                            <div className="mt-auto pt-4 border-t border-slate-800">
+                                <button
+                                    onClick={() => setShowGuide(true)}
+                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-brand-purple hover:bg-slate-800 hover:text-white transition-all font-bold"
+                                >
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    Hướng dẫn sử dụng
+                                </button>
+                            </div>
+                        </nav>
+
+                        <div className="p-6 border-t border-slate-800">
+                            <div className="bg-slate-800 rounded-lg p-3">
+                                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Trạng Thái</p>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-300">Chờ xử lý</span>
+                                    <span className="text-brand-teal font-mono">{orders.filter(o => o.status === OrderStatus.PENDING).length}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm mt-1">
+                                    <span className="text-gray-300">Đã điều phối</span>
+                                    <span className="text-brand-purple font-mono">{orders.filter(o => o.status === OrderStatus.ROUTED).length}</span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    </aside>
+
+                    {/* Main Content */}
+                    <main className="ml-64 flex-1 h-screen overflow-hidden relative">
+                        {/* Background Gradients */}
+                        <div className="absolute top-0 left-0 w-full h-full pointer-events-none no-print">
+                            <div className="absolute -top-20 -right-20 w-96 h-96 bg-brand-purple/10 rounded-full blur-3xl"></div>
+                            <div className="absolute bottom-0 left-0 w-64 h-64 bg-brand-teal/5 rounded-full blur-3xl"></div>
+                        </div>
+
+                        <div className="relative z-0 h-full overflow-y-auto">
+                            {view === 'IMPORT' && <ImportView onOrdersImported={handleOrdersImported} />}
+
+                            {view === 'PLANNING' && (
+                                <PlanningView
+                                    orders={orders}
+                                    shippers={shippers}
+                                    onClustersGenerated={handleClustersGenerated}
+                                    warehouse={warehouse}
+                                    setWarehouse={setWarehouse}
+                                />
+                            )}
+
+                            {view === 'RESULTS' && (
+                                <ResultsView
+                                    clusters={clusters.filter(c => !c.isCompleted)}
+                                    shippers={shippers}
+                                    onComplete={handleCompleteClusters}
+                                    onUpdateCluster={handleUpdateCluster}
+                                    onUpdateClusters={handleUpdateClusters}
+                                    onDeleteCluster={handleDeleteCluster}
+                                    warehouse={warehouse}
+                                />
+                            )}
+
+                            {view === 'RECONCILIATION' && (
+                                <ReconciliationView
+                                    clusters={clusters.filter(c => c.isCompleted && !c.isReconciled)}
+                                    onUpdateCluster={handleUpdateCluster}
+                                    onFinalizeCluster={handleFinalizeCluster}
+                                />
+                            )}
+
+                            {view === 'SHIPPERS' && (
+                                <ShipperManager
+                                    shippers={shippers}
+                                    onAddShipper={(s) => setShippers([...shippers, s])}
+                                    onRemoveShipper={(id) => setShippers(shippers.filter(s => s.id !== id))}
+                                />
+                            )}
+
+                            {view === 'HISTORY' && (
+                                <HistoryView
+                                    clusters={clusters}
+                                    shippers={shippers}
+                                />
+                            )}
+                        </div>
+                    </main>
+
+                    <UserGuide isOpen={showGuide} onClose={() => setShowGuide(false)} />
                 </div>
-            </aside>
-
-            {/* Main Content */}
-            <main className="ml-64 flex-1 h-screen overflow-hidden relative">
-                {/* Background Gradients */}
-                <div className="absolute top-0 left-0 w-full h-full pointer-events-none no-print">
-                    <div className="absolute -top-20 -right-20 w-96 h-96 bg-brand-purple/10 rounded-full blur-3xl"></div>
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-brand-teal/5 rounded-full blur-3xl"></div>
-                </div>
-
-                <div className="relative z-0 h-full overflow-y-auto">
-                    {view === 'IMPORT' && <ImportView onOrdersImported={handleOrdersImported} />}
-
-                    {view === 'PLANNING' && (
-                        <PlanningView
-                            orders={orders}
-                            shippers={shippers}
-                            onClustersGenerated={handleClustersGenerated}
-                            warehouse={warehouse}
-                            setWarehouse={setWarehouse}
-                        />
-                    )}
-
-                    {view === 'RESULTS' && (
-                        <ResultsView
-                            clusters={clusters.filter(c => !c.isCompleted)}
-                            shippers={shippers}
-                            onComplete={handleCompleteClusters}
-                            onUpdateCluster={handleUpdateCluster}
-                            onUpdateClusters={handleUpdateClusters}
-                            onDeleteCluster={handleDeleteCluster}
-                            warehouse={warehouse}
-                        />
-                    )}
-
-                    {view === 'RECONCILIATION' && (
-                        <ReconciliationView
-                            clusters={clusters.filter(c => c.isCompleted && !c.isReconciled)}
-                            onUpdateCluster={handleUpdateCluster}
-                            onFinalizeCluster={handleFinalizeCluster}
-                        />
-                    )}
-
-                    {view === 'SHIPPERS' && (
-                        <ShipperManager
-                            shippers={shippers}
-                            onAddShipper={(s) => setShippers([...shippers, s])}
-                            onRemoveShipper={(id) => setShippers(shippers.filter(s => s.id !== id))}
-                        />
-                    )}
-
-                    {view === 'HISTORY' && (
-                        <HistoryView
-                            clusters={clusters}
-                            shippers={shippers}
-                        />
-                    )}
-                </div>
-            </main>
-
-            <UserGuide isOpen={showGuide} onClose={() => setShowGuide(false)} />
-        </div>
+            </ProtectedRoute>
+        </AuthProvider>
     );
 };
 
