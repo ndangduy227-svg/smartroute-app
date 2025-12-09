@@ -42,7 +42,19 @@ const App: React.FC = () => {
 
     // Load Data on Login
     React.useEffect(() => {
-        if (!user) return;
+        if (!user) {
+            // Reset State on Logout
+            setOrders([]);
+            setClusters([]);
+            setWarehouse(null);
+            setShippers([
+                { id: 's1', name: 'Le Van Minh', phoneNumber: '090111222', licensePlate: '59-S1 12345', note: 'Morning shift' },
+                { id: 's2', name: 'Nguyen Thi Ha', phoneNumber: '090333444', licensePlate: '59-T2 67890', note: '' },
+            ]);
+            setApiKey(import.meta.env.VITE_TRACK_ASIA_API_KEY || '');
+            setView('IMPORT');
+            return;
+        }
 
         const loadData = async () => {
             // 1. Save Profile
