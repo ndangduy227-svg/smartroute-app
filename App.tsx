@@ -264,29 +264,33 @@ const App: React.FC = () => {
                     <div className="relative z-0 h-full overflow-y-auto">
                         {view === 'IMPORT' && <ImportView onOrdersImported={handleOrdersImported} />}
 
-                        <PlanningView
-                            orders={orders}
-                            shippers={shippers}
-                            onClustersGenerated={handleClustersGenerated}
-                            warehouse={warehouse}
-                            setWarehouse={setWarehouse}
-                            apiKey={apiKey}
-                            onApiKeyChange={(key) => {
-                                setApiKey(key);
-                                if (user) FirestoreService.saveApiKey(user.uid, key);
-                            }}
-                        />
+                        {view === 'PLANNING' && (
+                            <PlanningView
+                                orders={orders}
+                                shippers={shippers}
+                                onClustersGenerated={handleClustersGenerated}
+                                warehouse={warehouse}
+                                setWarehouse={setWarehouse}
+                                apiKey={apiKey}
+                                onApiKeyChange={(key) => {
+                                    setApiKey(key);
+                                    if (user) FirestoreService.saveApiKey(user.uid, key);
+                                }}
+                            />
+                        )}
 
-                        <ResultsView
-                            clusters={clusters.filter(c => !c.isCompleted)}
-                            shippers={shippers}
-                            onComplete={handleCompleteClusters}
-                            onUpdateCluster={handleUpdateCluster}
-                            onUpdateClusters={handleUpdateClusters}
-                            onDeleteCluster={handleDeleteCluster}
-                            warehouse={warehouse}
-                            apiKey={apiKey}
-                        />
+                        {view === 'RESULTS' && (
+                            <ResultsView
+                                clusters={clusters.filter(c => !c.isCompleted)}
+                                shippers={shippers}
+                                onComplete={handleCompleteClusters}
+                                onUpdateCluster={handleUpdateCluster}
+                                onUpdateClusters={handleUpdateClusters}
+                                onDeleteCluster={handleDeleteCluster}
+                                warehouse={warehouse}
+                                apiKey={apiKey}
+                            />
+                        )}
 
                         {view === 'RECONCILIATION' && (
                             <ReconciliationView
