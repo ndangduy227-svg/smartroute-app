@@ -52,6 +52,7 @@ const App: React.FC = () => {
                 { id: 's2', name: 'Nguyen Thi Ha', phoneNumber: '090333444', licensePlate: '59-T2 67890', note: '' },
             ]);
             setApiKey(import.meta.env.VITE_TRACK_ASIA_API_KEY || '');
+            localStorage.removeItem('trackAsiaApiKey');
             setView('IMPORT');
             return;
         }
