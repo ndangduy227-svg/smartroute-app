@@ -46,8 +46,7 @@ export interface RouteConfig {
   costPerPoint: number; // New: Cost per delivery point
   currency: 'VND' | 'USD';
   maxKmPerShipper: number;
-  trackAsiaApiKey?: string; // Changed from googleMapsApiKey
-  geminiApiKey?: string; // New: For Smart Clustering
+  geminiApiKey?: string;
 }
 
 export interface Cluster {

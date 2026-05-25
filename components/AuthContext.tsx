@@ -25,9 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        console.log("Auth Provider Mounted");
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-            console.log("Auth State Changed:", currentUser);
             setUser(currentUser);
             setLoading(false);
         });
@@ -36,17 +34,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const loginWithGoogle = async () => {
         setError(null);
-        console.log("Attempting Google Login...");
         try {
             const provider = new GoogleAuthProvider();
-            const result = await signInWithPopup(auth, provider);
-            console.log("Google Login Success:", result);
+            await signInWithPopup(auth, provider);
         } catch (err: any) {
-            console.error("Login failed (full error):", err);
-            console.error("Error Code:", err.code);
-            console.error("Error Message:", err.message);
             setError(`[${err.code}] ${err.message}`);
-            alert(`Login Error: ${err.message}`); // Force visibility
         }
     };
 

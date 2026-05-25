@@ -3,7 +3,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { fetchLarkRecords, createLarkRecords } from './larkService.js';
+import { fetchPoscakeOrders } from './poscakeService.js';
 
 dotenv.config();
 
@@ -13,30 +15,77 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID;
+const TRACK_ASIA_API_KEY = process.env.TRACK_ASIA_API_KEY;
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:5173').split(',');
+
+// --- CORS ---
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && ALLOWED_ORIGINS.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
+    next();
+});
+
 // Rate Limiters
 const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 20, // Limit each IP to 20 requests per windowMs
+    windowMs: 60 * 1000,
+    max: 30,
     message: { error: 'Too many requests, please try again later.' }
 });
 
 const geocodeLimiter = rateLimit({
-    windowMs: 60 * 1000, // 1 minute
-    max: 60, // Limit each IP to 60 requests per windowMs
+    windowMs: 60 * 1000,
+    max: 60,
     message: { error: 'Too many geocoding requests, please slow down.' }
 });
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// API Routes
+// --- Firebase Auth Middleware ---
+const JWKS = createRemoteJWKSet(
+    new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
+);
+
+const verifyAuth = async (req, res, next) => {
+    if (!FIREBASE_PROJECT_ID) {
+        console.error('FIREBASE_PROJECT_ID not configured');
+        return res.status(500).json({ error: 'Server auth not configured' });
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        const token = authHeader.split('Bearer ')[1];
+        const { payload } = await jwtVerify(token, JWKS, {
+            issuer: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
+            audience: FIREBASE_PROJECT_ID,
+        });
+        req.user = payload;
+        next();
+    } catch (error) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+};
+
+const isValidId = (id) => typeof id === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(id);
+
+// --- Routes ---
+
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Smart Route Backend is running' });
 });
 
-// Lark API Proxy
-app.get('/api/lark/orders', async (req, res) => {
+app.get('/api/lark/orders', verifyAuth, apiLimiter, async (req, res) => {
     try {
         const { baseId, tableId } = req.query;
         const targetBaseId = baseId || process.env.LARK_BASE_ID;
@@ -45,62 +94,80 @@ app.get('/api/lark/orders', async (req, res) => {
         if (!targetBaseId || !targetTableId) {
             return res.status(400).json({ error: 'Missing Base ID or Table ID' });
         }
+        if ((baseId && !isValidId(baseId)) || (tableId && !isValidId(tableId))) {
+            return res.status(400).json({ error: 'Invalid Base ID or Table ID format' });
+        }
 
         const records = await fetchLarkRecords(targetBaseId, targetTableId);
         res.json({ data: records });
     } catch (error) {
         console.error('Error fetching orders:', error.message);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'Failed to fetch orders' });
     }
 });
 
-app.post('/api/lark/routes', async (req, res) => {
+app.post('/api/lark/routes', verifyAuth, apiLimiter, async (req, res) => {
     try {
         const { baseId, tableId, routes } = req.body;
         const targetBaseId = baseId || process.env.LARK_BASE_ID;
-        // For routes, we might need a different table ID, or pass it in
         const targetTableId = tableId || process.env.LARK_ROUTES_TABLE_ID;
 
         if (!targetBaseId || !targetTableId) {
             return res.status(400).json({ error: 'Missing Base ID or Table ID' });
         }
-
         if (!routes || !Array.isArray(routes)) {
             return res.status(400).json({ error: 'Invalid routes data' });
         }
 
-        // Transform routes to Lark record format if needed
-        // Mapping example: { "Route Name": r.name, "Driver": r.driverName, ... }
         const records = routes.map(r => ({
             "Route Name": r.name,
             "Driver": r.driverName || 'Unassigned',
-            "Total Distance": r.totalDistanceKm,
-            "Stop Count": r.orders.length,
-            "Stops": JSON.stringify(r.orders.map(o => o.address)) // Lark Text field
+            "Total Distance": String(r.totalDistanceKm),
+            "Stop Count": String(r.orders.length),
+            "Stops": JSON.stringify(r.orders.map(o => o.address))
         }));
 
         const result = await createLarkRecords(targetBaseId, targetTableId, records);
         res.json({ success: true, count: result.length });
     } catch (error) {
         console.error('Error syncing routes:', error.message);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'Failed to sync routes' });
     }
 });
 
-// Track Asia VRP Proxy
-app.post('/api/vrp/optimize', apiLimiter, async (req, res) => {
+app.post('/api/poscake/orders', verifyAuth, apiLimiter, async (req, res) => {
     try {
-        // Input Validation
+        const { shopId, token } = req.body;
+        const orders = await fetchPoscakeOrders(shopId, token);
+        res.json({ data: orders });
+    } catch (error) {
+        console.error('Error fetching POSCake orders:', error.message);
+        res.status(500).json({ error: 'Failed to fetch orders' });
+    }
+});
+
+app.get('/api/poscake/orders', verifyAuth, apiLimiter, async (req, res) => {
+    try {
+        const { shopId, token } = req.query;
+        const orders = await fetchPoscakeOrders(shopId, token);
+        res.json({ data: orders });
+    } catch (error) {
+        console.error('Error fetching POSCake orders:', error.message);
+        res.status(500).json({ error: 'Failed to fetch orders' });
+    }
+});
+
+app.post('/api/vrp/optimize', verifyAuth, apiLimiter, async (req, res) => {
+    try {
         if (!req.body.jobs || !Array.isArray(req.body.jobs)) {
             return res.status(400).json({ error: "Invalid payload: 'jobs' array is required" });
         }
 
-        const apiKey = req.headers['x-track-asia-key'] || process.env.TRACK_ASIA_API_KEY;
-        if (!apiKey) {
-            return res.status(500).json({ error: 'Server configuration error: Missing API Key' });
+        if (!TRACK_ASIA_API_KEY) {
+            return res.status(500).json({ error: 'Server configuration error' });
         }
 
-        const response = await fetch(`https://maps.track-asia.com/api/v1/vrp?key=${apiKey}`, {
+        const response = await fetch(`https://maps.track-asia.com/api/v1/vrp?key=${TRACK_ASIA_API_KEY}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(req.body)
@@ -113,32 +180,29 @@ app.post('/api/vrp/optimize', apiLimiter, async (req, res) => {
         res.json(data);
     } catch (error) {
         console.error('VRP Proxy Error:', error.message);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'Route optimization failed' });
     }
 });
 
-// Track Asia Geocoding Proxy
-app.get('/api/vrp/geocode', geocodeLimiter, async (req, res) => {
+app.get('/api/vrp/geocode', verifyAuth, geocodeLimiter, async (req, res) => {
     try {
         const { text } = req.query;
-        const apiKey = req.headers['x-track-asia-key'] || process.env.TRACK_ASIA_API_KEY;
 
-        if (!apiKey) {
-            return res.status(500).json({ error: 'Server configuration error: Missing API Key' });
+        if (!TRACK_ASIA_API_KEY) {
+            return res.status(500).json({ error: 'Server configuration error' });
+        }
+        if (!text || typeof text !== 'string' || text.length > 500) {
+            return res.status(400).json({ error: 'Invalid address text' });
         }
 
-        if (!text) {
-            return res.status(400).json({ error: 'Missing address text' });
-        }
-
-        const url = `https://maps.track-asia.com/api/v1/autocomplete?text=${encodeURIComponent(text)}&key=${apiKey}&lang=vi`;
+        const url = `https://maps.track-asia.com/api/v1/autocomplete?text=${encodeURIComponent(text)}&key=${TRACK_ASIA_API_KEY}&lang=vi`;
         const response = await fetch(url);
         const data = await response.json();
 
         res.json(data);
     } catch (error) {
         console.error('Geocoding Proxy Error:', error.message);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'Geocoding failed' });
     }
 });
 

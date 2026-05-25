@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Cluster, Shipper, OrderStatus, Order, Coordinate } from '../types';
 import { TrackAsiaMap } from './TrackAsiaMap';
 import { solveVRP } from '../utils/vrpHelpers';
+import { apiFetch } from '../utils/api';
 
 interface ResultsViewProps {
     clusters: Cluster[];
@@ -12,10 +13,9 @@ interface ResultsViewProps {
     onUpdateClusters: (clusters: Cluster[]) => void;
     onDeleteCluster: (clusterId: string) => void;
     warehouse: Coordinate | null;
-    apiKey?: string;
 }
 
-export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, onComplete, onUpdateCluster, onUpdateClusters, onDeleteCluster, warehouse, apiKey }) => {
+export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, onComplete, onUpdateCluster, onUpdateClusters, onDeleteCluster, warehouse }) => {
     const [selectedClusterId, setSelectedClusterId] = useState<string | null>(clusters[0]?.id || null);
     const [viewMode, setViewMode] = useState<'MAP' | 'DETAILS' | 'KANBAN'>('MAP');
     const [isOptimizing, setIsOptimizing] = useState(false);
@@ -401,13 +401,13 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
                                             if (!baseId || !tableId) return alert('Nhập đủ thông tin!');
 
                                             try {
-                                                const res = await fetch('/api/lark/routes', {
+                                                const res = await apiFetch('/api/lark/routes', {
                                                     method: 'POST',
                                                     headers: { 'Content-Type': 'application/json' },
                                                     body: JSON.stringify({
                                                         baseId,
                                                         tableId,
-                                                        routes: clusters // Sync all clusters
+                                                        routes: clusters
                                                     })
                                                 });
                                                 const json = await res.json();
@@ -436,7 +436,6 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ clusters, shippers, on
                             shippers={shippers}
                             selectedClusterId={selectedClusterId}
                             onSelectCluster={setSelectedClusterId}
-                            apiKey={apiKey}
                         />
                     ) : viewMode === 'KANBAN' ? (
                         <div className="h-full overflow-x-auto overflow-y-hidden p-4 flex gap-4">

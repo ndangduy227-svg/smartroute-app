@@ -3,6 +3,7 @@ import React, { useState, useCallback } from 'react';
 import { RawOrder, Order, OrderStatus, FieldMapping } from '../types';
 import { MOCK_ORDERS_CSV } from '../constants';
 import { ImportGuideModal, GuideType } from './ImportGuideModal';
+import { apiFetch } from '../utils/api';
 // Assets
 import larkLogo from '../assets/Logo App Partner - Smart Route/lark_logo_transparent-1.png';
 import pancakeLogo from '../assets/Logo App Partner - Smart Route/Pancake Logo.png';
@@ -381,7 +382,7 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
                                         setLoading(true);
                                         setErrorMsg('');
                                         try {
-                                            const res = await fetch(`/api/lark/orders?baseId=${larkConfig.baseId}&tableId=${larkConfig.tableId}`);
+                                            const res = await apiFetch(`/api/lark/orders?baseId=${larkConfig.baseId}&tableId=${larkConfig.tableId}`);
                                             const json = await res.json();
                                             if (json.error) throw new Error(json.error);
 
@@ -466,7 +467,11 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
                                         setLoading(true);
                                         setErrorMsg('');
                                         try {
-                                            const response = await fetch(`/api/poscake/orders?shopId=${posCakeConfig.shopId}&token=${posCakeConfig.apiKey}`);
+                                            const response = await apiFetch('/api/poscake/orders', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ shopId: posCakeConfig.shopId, token: posCakeConfig.apiKey })
+                                            });
                                             const data = await response.json();
                                             if (data.error) throw new Error(data.error);
 

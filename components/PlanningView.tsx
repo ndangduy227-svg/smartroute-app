@@ -12,15 +12,12 @@ interface PlanningViewProps {
     onClustersGenerated: (clusters: Cluster[]) => void;
     warehouse: Coordinate | null;
     setWarehouse: (coord: Coordinate | null) => void;
-    apiKey?: string;
-    onApiKeyChange?: (key: string) => void;
 }
 
 // Helper to calculate distance between two points (Haversine formula)
 // MOVED TO utils/vrpHelpers.ts
 
-export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, onClustersGenerated, warehouse, setWarehouse, apiKey, onApiKeyChange }) => {
-    // Config State
+export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, onClustersGenerated, warehouse, setWarehouse }) => {
     const [config, setConfig] = useState<RouteConfig>({
         startPoints: [],
         maxOrdersPerShipper: 15,
@@ -29,28 +26,8 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
         costPerPoint: 5000,
         currency: 'VND',
         maxKmPerShipper: 100,
-
         geminiApiKey: ''
     });
-
-    // API Key State - Sync with prop if available, else local storage
-    const [trackAsiaApiKey, setTrackAsiaApiKey] = useState<string>(() => apiKey || localStorage.getItem('trackAsiaApiKey') || '');
-    const [showApiKeyModal, setShowApiKeyModal] = useState(false);
-
-    // Update local state when prop changes (from Firestore)
-    useEffect(() => {
-        if (apiKey && apiKey !== trackAsiaApiKey) {
-            setTrackAsiaApiKey(apiKey);
-        }
-    }, [apiKey]);
-
-    // Persist changes
-    useEffect(() => {
-        if (trackAsiaApiKey) {
-            localStorage.setItem('trackAsiaApiKey', trackAsiaApiKey);
-            if (onApiKeyChange) onApiKeyChange(trackAsiaApiKey);
-        }
-    }, [trackAsiaApiKey]);
 
     const [showConfirmModal, setShowConfirmModal] = useState(false); // New: Confirmation Modal State
     const [showTour, setShowTour] = useState(false); // New: Tour State
@@ -162,7 +139,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
         setIsOptimizing(true);
         setStatusMessage('Đang xác thực địa chỉ kho hàng...');
 
-        const coords = await geocodeAddress(config.startPoints[0], trackAsiaApiKey);
+        const coords = await geocodeAddress(config.startPoints[0]);
         if (coords) {
             setWarehouse(coords);
             setStartPointAddress(config.startPoints[0]);
@@ -440,7 +417,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
             // 1. Geocode Warehouse if not already done
             if (!originCoords) {
                 setStatusMessage('Đang tìm vị trí kho hàng (TrackAsia)...');
-                const sp = await geocodeAddress(config.startPoints[0], trackAsiaApiKey);
+                const sp = await geocodeAddress(config.startPoints[0]);
                 if (sp) {
                     originCoords = sp;
                     setWarehouse(sp);
@@ -463,7 +440,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                     continue;
                 }
 
-                const coords = await geocodeAddress(order.address, trackAsiaApiKey);
+                const coords = await geocodeAddress(order.address);
 
                 updatedOrders.push({
                     ...order,
@@ -525,7 +502,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                         // we might need to be careful.
                         // But generally, VRP will optimize the path.
 
-                        const routes = await solveVRP(turfCluster.orders, originCoords!, config, trackAsiaApiKey);
+                        const routes = await solveVRP(turfCluster.orders, originCoords!, config);
                         console.log(`[DEBUG] VRP Success for Cluster ${idx + 1}. Routes:`, routes);
 
                         if (routes.length > 0) {
@@ -582,7 +559,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
         // 1. Check Warehouse
         if (!warehouse) {
             setStatusMessage('Đang lấy vị trí kho (TrackAsia)...');
-            const sp = await geocodeAddress(config.startPoints[0], trackAsiaApiKey);
+            const sp = await geocodeAddress(config.startPoints[0]);
             if (sp) {
                 setWarehouse(sp);
                 setStartPointAddress(config.startPoints[0]);
@@ -599,7 +576,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
             const updatedPending = [];
             let processedCount = 0;
             for (const order of pending) {
-                const coords = await geocodeAddress(order.address, trackAsiaApiKey);
+                const coords = await geocodeAddress(order.address);
                 updatedPending.push({ ...order, coordinates: coords || undefined });
 
                 processedCount++;
@@ -641,16 +618,6 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                         </button>
                     </div>
 
-                    {/* API Key Configuration */}
-                    <div className="flex flex-col items-end">
-                        <button
-                            onClick={() => setShowApiKeyModal(true)}
-                            className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-2 transition-colors ${trackAsiaApiKey ? 'bg-green-900/30 text-green-400 border border-green-800' : 'bg-red-900/30 text-red-400 border border-red-800 animate-pulse'}`}
-                        >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
-                            {trackAsiaApiKey ? 'Đã có API Key' : 'Chưa có API Key'}
-                        </button>
-                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-slate-800" id="tour-config">
@@ -807,7 +774,6 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                             <PlanningMap
                                 orders={mappedOrders.filter(o => selectedOrderIds.has(o.id) && o.status === OrderStatus.PENDING)}
                                 warehouse={warehouse}
-                                apiKey={trackAsiaApiKey}
                             />
                         )}
 
@@ -851,40 +817,6 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ orders, shippers, on
                         )}
                     </button>
 
-                    {/* API Key Modal */}
-                    {showApiKeyModal && (
-                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex justify-center items-center p-4">
-                            <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md shadow-2xl">
-                                <h3 className="text-xl font-bold text-white mb-4">Cấu hình Track Asia API</h3>
-                                <p className="text-sm text-gray-400 mb-4">
-                                    Nhập API Key của bạn để sử dụng tính năng bản đồ và tối ưu lộ trình.
-                                    <br />
-                                    <a href="https://track-asia.com/" target="_blank" rel="noreferrer" className="text-brand-teal hover:underline">Đăng ký miễn phí tại đây</a>
-                                </p>
-                                <input
-                                    type="text"
-                                    className="w-full bg-slate-800 border border-slate-600 rounded p-3 text-white mb-6 focus:ring-2 focus:ring-brand-teal outline-none"
-                                    placeholder="Nhập API Key..."
-                                    value={trackAsiaApiKey}
-                                    onChange={(e) => setTrackAsiaApiKey(e.target.value)}
-                                />
-                                <div className="flex justify-end gap-3">
-                                    <button
-                                        onClick={() => setShowApiKeyModal(false)}
-                                        className="px-4 py-2 text-gray-400 hover:text-white"
-                                    >
-                                        Đóng
-                                    </button>
-                                    <button
-                                        onClick={() => setShowApiKeyModal(false)}
-                                        className="bg-brand-teal text-brand-dark font-bold px-6 py-2 rounded hover:bg-teal-400 transition-colors"
-                                    >
-                                        Lưu Cấu Hình
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
 

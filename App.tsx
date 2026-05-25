@@ -33,8 +33,7 @@ const App: React.FC = () => {
         { id: 's2', name: 'Nguyen Thi Ha', phoneNumber: '090333444', licensePlate: '59-T2 67890', note: '' },
     ]);
     const [clusters, setClusters] = useState<Cluster[]>([]);
-    const [warehouse, setWarehouse] = useState<Coordinate | null>(null); // Lifted state
-    const [apiKey, setApiKey] = useState<string>(import.meta.env.VITE_TRACK_ASIA_API_KEY || '');
+    const [warehouse, setWarehouse] = useState<Coordinate | null>(null);
 
     const { user, logout } = useAuth();
 
@@ -51,8 +50,6 @@ const App: React.FC = () => {
                 { id: 's1', name: 'Le Van Minh', phoneNumber: '090111222', licensePlate: '59-S1 12345', note: 'Morning shift' },
                 { id: 's2', name: 'Nguyen Thi Ha', phoneNumber: '090333444', licensePlate: '59-T2 67890', note: '' },
             ]);
-            setApiKey(import.meta.env.VITE_TRACK_ASIA_API_KEY || '');
-            localStorage.removeItem('trackAsiaApiKey');
             setView('IMPORT');
             return;
         }
@@ -82,9 +79,6 @@ const App: React.FC = () => {
                 }
             }
 
-            // 4. Load API Key
-            const savedKey = await FirestoreService.getApiKey(user.uid);
-            if (savedKey) setApiKey(savedKey);
         };
 
         loadData();
@@ -284,11 +278,6 @@ const App: React.FC = () => {
                                 onClustersGenerated={handleClustersGenerated}
                                 warehouse={warehouse}
                                 setWarehouse={setWarehouse}
-                                apiKey={apiKey}
-                                onApiKeyChange={(key) => {
-                                    setApiKey(key);
-                                    if (user) FirestoreService.saveApiKey(user.uid, key);
-                                }}
                             />
                         )}
 
@@ -301,7 +290,6 @@ const App: React.FC = () => {
                                 onUpdateClusters={handleUpdateClusters}
                                 onDeleteCluster={handleDeleteCluster}
                                 warehouse={warehouse}
-                                apiKey={apiKey}
                             />
                         )}
 
