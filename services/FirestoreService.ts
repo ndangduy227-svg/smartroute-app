@@ -2,7 +2,7 @@
 import { doc, setDoc, getDoc, collection, getDocs, addDoc, query, where, orderBy } from "firebase/firestore";
 import { db } from "../firebase";
 import { User } from "firebase/auth";
-import { Shipper, Order, Cluster, Coordinate } from "../types";
+import { Shipper, Order, Cluster, Coordinate, ApiKeyStatus } from "../types";
 
 export const FirestoreService = {
     // --- User Profile ---
@@ -21,28 +21,32 @@ export const FirestoreService = {
     },
 
     // --- API Key / Preferences ---
-    saveApiKey: async (userId: string, apiKey: string) => {
+    saveApiKey: async (userId: string, apiKey: string, status: ApiKeyStatus = 'untested') => {
         try {
             const userRef = doc(db, "users", userId);
             await setDoc(userRef, {
-                preferences: { trackAsiaApiKey: apiKey }
+                preferences: { trackAsiaApiKey: apiKey, trackAsiaKeyStatus: status }
             }, { merge: true });
         } catch (error) {
             console.error("Error saving API Key:", error);
         }
     },
 
-    getApiKey: async (userId: string): Promise<string | null> => {
+    getApiKey: async (userId: string): Promise<{ key: string | null; status: ApiKeyStatus }> => {
         try {
             const userRef = doc(db, "users", userId);
             const docSnap = await getDoc(userRef);
             if (docSnap.exists()) {
-                return docSnap.data().preferences?.trackAsiaApiKey || null;
+                const prefs = docSnap.data().preferences;
+                return {
+                    key: prefs?.trackAsiaApiKey || null,
+                    status: prefs?.trackAsiaKeyStatus || 'untested'
+                };
             }
         } catch (error) {
             console.error("Error getting API Key:", error);
         }
-        return null;
+        return { key: null, status: 'untested' };
     },
 
     // --- Shippers (Drivers) ---

@@ -77,4 +77,6 @@ export interface FieldMapping {
   cod: string;
 }
 
+export type ApiKeyStatus = 'untested' | 'testing' | 'valid' | 'invalid';
+
 export type ViewState = 'IMPORT' | 'PLANNING' | 'RESULTS' | 'SHIPPERS' | 'HISTORY' | 'RECONCILIATION';

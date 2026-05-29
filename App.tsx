@@ -9,9 +9,11 @@ import { ReconciliationView } from './components/ReconciliationView';
 import { HistoryView } from './components/HistoryView';
 import { ShipperManager } from './components/ShipperManager';
 import { UserGuide } from './components/UserGuide';
+import { ApiKeySettings } from './components/ApiKeySettings';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ViewState, Order, Shipper, Cluster, OrderStatus, Coordinate } from './types';
 import { FirestoreService } from './services/FirestoreService';
+import { setUserTrackAsiaKey } from './utils/api';
 
 // Icons
 const Icons = {
@@ -27,6 +29,7 @@ const App: React.FC = () => {
     // Global State
     const [view, setView] = useState<ViewState>('IMPORT');
     const [showGuide, setShowGuide] = useState(false);
+    const [showApiSettings, setShowApiSettings] = useState(false);
     const [orders, setOrders] = useState<Order[]>([]);
     const [shippers, setShippers] = useState<Shipper[]>([
         { id: 's1', name: 'Le Van Minh', phoneNumber: '090111222', licensePlate: '59-S1 12345', note: 'Morning shift' },
@@ -51,6 +54,7 @@ const App: React.FC = () => {
                 { id: 's2', name: 'Nguyen Thi Ha', phoneNumber: '090333444', licensePlate: '59-T2 67890', note: '' },
             ]);
             setView('IMPORT');
+            setUserTrackAsiaKey(null);
             return;
         }
 
@@ -62,7 +66,13 @@ const App: React.FC = () => {
             const savedShippers = await FirestoreService.getShippers(user.uid);
             if (savedShippers) setShippers(savedShippers);
 
-            // 3. Load Current Batch
+            // 3. Load API Key
+            const apiKeyData = await FirestoreService.getApiKey(user.uid);
+            if (apiKeyData.key) {
+                setUserTrackAsiaKey(apiKeyData.key);
+            }
+
+            // 4. Load Current Batch
             const savedBatch = await FirestoreService.getCurrentBatch(user.uid);
             if (savedBatch) {
                 // @ts-ignore
@@ -234,13 +244,22 @@ const App: React.FC = () => {
                                     <p className="text-sm font-bold text-white truncate">{user?.displayName || 'User'}</p>
                                     <p className="text-xs text-gray-400 truncate w-full" title={user?.email || ''}>{user?.email}</p>
                                 </div>
-                                <button
-                                    onClick={logout}
-                                    className="text-gray-400 hover:text-red-400 transition-colors p-2 hover:bg-slate-700 rounded-lg"
-                                    title="Sign Out"
-                                >
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                                </button>
+                                <div className="flex gap-1">
+                                    <button
+                                        onClick={() => setShowApiSettings(true)}
+                                        className="text-gray-400 hover:text-brand-teal transition-colors p-2 hover:bg-slate-700 rounded-lg"
+                                        title="API Settings"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                    </button>
+                                    <button
+                                        onClick={logout}
+                                        className="text-gray-400 hover:text-red-400 transition-colors p-2 hover:bg-slate-700 rounded-lg"
+                                        title="Sign Out"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </nav>
@@ -320,6 +339,7 @@ const App: React.FC = () => {
                 </main>
 
                 <UserGuide isOpen={showGuide} onClose={() => setShowGuide(false)} />
+                <ApiKeySettings isOpen={showApiSettings} onClose={() => setShowApiSettings(false)} />
             </div>
         </ProtectedRoute>
     );

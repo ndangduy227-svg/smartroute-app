@@ -4,10 +4,6 @@ import { RawOrder, Order, OrderStatus, FieldMapping } from '../types';
 import { MOCK_ORDERS_CSV } from '../constants';
 import { ImportGuideModal, GuideType } from './ImportGuideModal';
 import { apiFetch } from '../utils/api';
-// Assets
-import larkLogo from '../assets/Logo App Partner - Smart Route/lark_logo_transparent-1.png';
-import pancakeLogo from '../assets/Logo App Partner - Smart Route/Pancake Logo.png';
-import gsheetLogo from '../assets/Logo App Partner - Smart Route/google sheet logo transparent2.png';
 
 // @ts-ignore
 import * as XLSX from 'xlsx';
@@ -36,6 +32,8 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
     const [googleSheetUrl, setGoogleSheetUrl] = useState('');
     const [larkConfig, setLarkConfig] = useState({ appId: '', appSecret: '', baseId: '', tableId: '' });
     const [posCakeConfig, setPosCakeConfig] = useState({ apiKey: '', shopId: '' });
+    const [kiotvietConfig, setKiotvietConfig] = useState({ clientId: '', clientSecret: '', retailer: '' });
+    const [nhanhConfig, setNhanhConfig] = useState({ appId: '', businessId: '', accessToken: '' });
 
     // Guide Modal State
     const [guideType, setGuideType] = useState<GuideType | null>(null);
@@ -302,222 +300,116 @@ export const ImportView: React.FC<ImportViewProps> = ({ onOrdersImported }) => {
                 </div>
             )}
 
-            {/* --- NEW IMPORT UI --- */}
+            {/* --- PLATFORM CONNECTIONS --- */}
             {step === 1 && (
-                <div className="mt-8 space-y-6">
-                    <h4 className="text-gray-400 text-sm font-bold uppercase border-b border-slate-700 pb-2">Kết nối nền tảng</h4>
+                <div className="mt-8 space-y-5">
+                    <div className="flex items-center gap-3 border-b border-slate-700 pb-3">
+                        <svg className="w-5 h-5 text-brand-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                        <h4 className="text-white text-sm font-bold uppercase tracking-wider">Import tu nen tang</h4>
+                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Google Sheet Card */}
-                        <div className="bg-slate-800 rounded-xl border border-slate-700 p-5 hover:border-green-500/50 transition-all group relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-2 opacity-30 group-hover:opacity-40 transition-opacity">
-                                <img src={gsheetLogo} alt="Google Sheet" className="w-24 h-24 object-contain" />
-                            </div>
-                            <div className="flex justify-between items-start mb-4 relative z-10">
-                                <img src={gsheetLogo} alt="Google Sheet" className="w-12 h-12 object-contain" />
-                                <button
-                                    onClick={() => setGuideType('GSHEET')}
-                                    className="text-xs font-bold text-green-400 hover:text-green-300 flex items-center gap-1 bg-green-900/30 px-2 py-1 rounded"
-                                >
-                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                    Hướng dẫn
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                        {/* Google Sheet */}
+                        <div className="bg-gradient-to-br from-slate-800 to-slate-800/50 rounded-xl border border-slate-700 hover:border-green-500/40 transition-all group p-5">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-lg bg-green-500/15 flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-5 h-5 text-green-400" viewBox="0 0 24 24" fill="currentColor"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h5 className="text-white font-bold text-sm">Google Sheet</h5>
+                                    <p className="text-gray-500 text-xs">Apps Script Web App</p>
+                                </div>
+                                <button onClick={() => setGuideType('GSHEET')} className="text-green-400/60 hover:text-green-400 p-1.5 hover:bg-green-500/10 rounded-lg transition-colors" title="Huong dan">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                 </button>
                             </div>
-                            <h5 className="text-white font-bold mb-2 relative z-10">Google Sheet</h5>
-                            <div className="relative z-10">
-                                <input
-                                    type="text"
-                                    className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white text-xs focus:border-green-500 outline-none mb-2"
-                                    placeholder="Dán URL Web App..."
-                                    value={googleSheetUrl}
-                                    onChange={(e) => setGoogleSheetUrl(e.target.value)}
-                                />
-                                <button
-                                    onClick={handleGoogleSheetImport}
-                                    disabled={loading}
-                                    className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded text-xs transition-colors"
-                                >
-                                    Import
-                                </button>
+                            <div className="space-y-2">
+                                <input type="text" className="w-full bg-slate-900/80 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-xs focus:border-green-500 focus:ring-1 focus:ring-green-500/20 outline-none placeholder-gray-500" placeholder="Dan URL Web App..." value={googleSheetUrl} onChange={(e) => setGoogleSheetUrl(e.target.value)} />
+                                <button onClick={handleGoogleSheetImport} disabled={loading} className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-semibold py-2 rounded-lg text-xs transition-colors">{loading ? 'Dang tai...' : 'Import'}</button>
                             </div>
                         </div>
 
-                        {/* Lark Base Card */}
-                        <div className="bg-slate-800 rounded-xl border border-slate-700 p-5 hover:border-blue-500/50 transition-all group relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-2 opacity-30 group-hover:opacity-40 transition-opacity">
-                                <img src={larkLogo} alt="Lark" className="w-24 h-24 object-contain" />
-                            </div>
-                            <div className="flex justify-between items-start mb-4 relative z-10">
-                                <img src={larkLogo} alt="Lark" className="w-12 h-12 object-contain" />
-                                <button
-                                    onClick={() => setGuideType('LARK')}
-                                    className="text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 bg-blue-900/30 px-2 py-1 rounded"
-                                >
-                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                    Hướng dẫn
+                        {/* Lark Base */}
+                        <div className="bg-gradient-to-br from-slate-800 to-slate-800/50 rounded-xl border border-slate-700 hover:border-blue-500/40 transition-all group p-5">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-5 h-5 text-blue-400" viewBox="0 0 24 24" fill="currentColor"><path d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" /></svg>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h5 className="text-white font-bold text-sm">Lark Base</h5>
+                                    <p className="text-gray-500 text-xs">Feishu / Lark Suite</p>
+                                </div>
+                                <button onClick={() => setGuideType('LARK')} className="text-blue-400/60 hover:text-blue-400 p-1.5 hover:bg-blue-500/10 rounded-lg transition-colors" title="Huong dan">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                 </button>
                             </div>
-                            <h5 className="text-white font-bold mb-2 relative z-10">Lark Base</h5>
-                            <div className="relative z-10 space-y-2">
-                                <input
-                                    type="text"
-                                    className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white text-xs focus:border-blue-500 outline-none"
-                                    placeholder="Base ID..."
-                                    value={larkConfig.baseId}
-                                    onChange={(e) => setLarkConfig({ ...larkConfig, baseId: e.target.value })}
-                                />
-                                <input
-                                    type="text"
-                                    className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white text-xs focus:border-blue-500 outline-none"
-                                    placeholder="Table ID..."
-                                    value={larkConfig.tableId}
-                                    onChange={(e) => setLarkConfig({ ...larkConfig, tableId: e.target.value })}
-                                />
-                                <button
-                                    onClick={async () => {
-                                        if (!larkConfig.baseId || !larkConfig.tableId) {
-                                            setErrorMsg('Vui lòng nhập Base ID và Table ID');
-                                            return;
-                                        }
-                                        setLoading(true);
-                                        setErrorMsg('');
-                                        try {
-                                            const res = await apiFetch(`/api/lark/orders?baseId=${larkConfig.baseId}&tableId=${larkConfig.tableId}`);
-                                            const json = await res.json();
-                                            if (json.error) throw new Error(json.error);
-
-                                            const items = json.data;
-                                            if (!items || items.length === 0) {
-                                                setErrorMsg('Không tìm thấy dữ liệu trong bảng này.');
-                                                return;
-                                            }
-
-                                            const allKeys = new Set<string>();
-                                            items.forEach((item: any) => {
-                                                Object.keys(item.fields).forEach(k => allKeys.add(k));
-                                            });
-                                            const headerRow = Array.from(allKeys);
-
-                                            const rawOrders: RawOrder[] = items.map((item: any, idx: number) => {
-                                                const raw: RawOrder = { id: `lark-${idx}` };
-                                                headerRow.forEach(h => {
-                                                    const val = item.fields[h];
-                                                    raw[h] = typeof val === 'object' ? JSON.stringify(val) : String(val || '');
-                                                });
-                                                return raw;
-                                            });
-
-                                            setHeaders(headerRow);
-                                            setParsedRows(rawOrders);
-                                            setFileName(`Lark Base: ${larkConfig.tableId}`);
-                                            suggestMapping(headerRow);
-                                            setStep(2);
-                                        } catch (err: any) {
-                                            console.error(err);
-                                            setErrorMsg('Lỗi kết nối Lark: ' + err.message);
-                                        } finally {
-                                            setLoading(false);
-                                        }
-                                    }}
-                                    disabled={loading}
-                                    className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded text-xs transition-colors"
-                                >
-                                    {loading ? 'Đang tải...' : 'Kết nối Lark'}
-                                </button>
+                            <div className="space-y-2">
+                                <input type="text" className="w-full bg-slate-900/80 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none placeholder-gray-500" placeholder="Base ID..." value={larkConfig.baseId} onChange={(e) => setLarkConfig({ ...larkConfig, baseId: e.target.value })} />
+                                <input type="text" className="w-full bg-slate-900/80 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none placeholder-gray-500" placeholder="Table ID..." value={larkConfig.tableId} onChange={(e) => setLarkConfig({ ...larkConfig, tableId: e.target.value })} />
+                                <button onClick={async () => { if (!larkConfig.baseId || !larkConfig.tableId) { setErrorMsg('Vui long nhap Base ID va Table ID'); return; } setLoading(true); setErrorMsg(''); try { const res = await apiFetch(`/api/lark/orders?baseId=${larkConfig.baseId}&tableId=${larkConfig.tableId}`); const json = await res.json(); if (json.error) throw new Error(json.error); const items = json.data; if (!items || items.length === 0) { setErrorMsg('Khong tim thay du lieu trong bang nay.'); return; } const allKeys = new Set<string>(); items.forEach((item: any) => { Object.keys(item.fields).forEach(k => allKeys.add(k)); }); const headerRow = Array.from(allKeys); const rawOrders: RawOrder[] = items.map((item: any, idx: number) => { const raw: RawOrder = { id: `lark-${idx}` }; headerRow.forEach(h => { const val = item.fields[h]; raw[h] = typeof val === 'object' ? JSON.stringify(val) : String(val || ''); }); return raw; }); setHeaders(headerRow); setParsedRows(rawOrders); setFileName(`Lark Base: ${larkConfig.tableId}`); suggestMapping(headerRow); setStep(2); } catch (err: any) { setErrorMsg('Loi ket noi Lark: ' + err.message); } finally { setLoading(false); } }} disabled={loading} className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold py-2 rounded-lg text-xs transition-colors">{loading ? 'Dang tai...' : 'Ket noi Lark'}</button>
                             </div>
                         </div>
 
-                        {/* POSCake Card */}
-                        <div className="bg-slate-800 rounded-xl border border-slate-700 p-5 hover:border-brand-teal/50 transition-all group relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-2 opacity-30 group-hover:opacity-40 transition-opacity">
-                                <img src={pancakeLogo} alt="POSCake" className="w-24 h-24 object-contain" />
-                            </div>
-                            <div className="flex justify-between items-start mb-4 relative z-10">
-                                <img src={pancakeLogo} alt="POSCake" className="w-12 h-12 object-contain" />
-                                <button
-                                    onClick={() => setGuideType('POSCAKE')}
-                                    className="text-xs font-bold text-brand-teal hover:text-teal-300 flex items-center gap-1 bg-teal-900/30 px-2 py-1 rounded"
-                                >
-                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                    Hướng dẫn
+                        {/* POSCake */}
+                        <div className="bg-gradient-to-br from-slate-800 to-slate-800/50 rounded-xl border border-slate-700 hover:border-teal-500/40 transition-all group p-5">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-lg bg-teal-500/15 flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-5 h-5 text-teal-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0A1.75 1.75 0 003 15.546m18-3.046c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0A1.75 1.75 0 003 12.5m9-8.5v4" /></svg>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h5 className="text-white font-bold text-sm">Pancake POS</h5>
+                                    <p className="text-gray-500 text-xs">POSCake / Pancake</p>
+                                </div>
+                                <button onClick={() => setGuideType('POSCAKE')} className="text-teal-400/60 hover:text-teal-400 p-1.5 hover:bg-teal-500/10 rounded-lg transition-colors" title="Huong dan">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                 </button>
                             </div>
-                            <h5 className="text-white font-bold mb-2 relative z-10">POSCake (Pancake)</h5>
-                            <div className="relative z-10">
-                                <input
-                                    type="text"
-                                    className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white text-xs focus:border-brand-teal outline-none mb-2"
-                                    placeholder="API Key..."
-                                    value={posCakeConfig.apiKey}
-                                    onChange={(e) => setPosCakeConfig({ ...posCakeConfig, apiKey: e.target.value })}
-                                />
-                                <input
-                                    type="text"
-                                    className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white text-xs focus:border-brand-teal outline-none mb-2"
-                                    placeholder="Shop ID..."
-                                    value={posCakeConfig.shopId}
-                                    onChange={(e) => setPosCakeConfig({ ...posCakeConfig, shopId: e.target.value })}
-                                />
-                                <button
-                                    onClick={async () => {
-                                        if (!posCakeConfig.apiKey || !posCakeConfig.shopId) {
-                                            setErrorMsg('Vui lòng nhập API Key và Shop ID POSCake');
-                                            return;
-                                        }
-                                        setLoading(true);
-                                        setErrorMsg('');
-                                        try {
-                                            const response = await apiFetch('/api/poscake/orders', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ shopId: posCakeConfig.shopId, token: posCakeConfig.apiKey })
-                                            });
-                                            const data = await response.json();
-                                            if (data.error) throw new Error(data.error);
-
-                                            const newOrders = data.data.map((r: any) => ({
-                                                id: r.id,
-                                                address: r.address,
-                                                lat: 0, lng: 0,
-                                                weight: r.weight || 1,
-                                                cod: r.cod || 0,
-                                                customerName: r.customerName,
-                                                status: 'pending'
-                                            }));
-
-                                            const headerRow = ['id', 'customerName', 'address', 'weight', 'cod', 'status'];
-                                            setHeaders(headerRow);
-
-                                            const rawOrders = newOrders.map((o: any, idx: number) => ({
-                                                id: `pos-${idx}`,
-                                                ...o,
-                                                weight: String(o.weight),
-                                                cod: String(o.cod)
-                                            }));
-
-                                            setParsedRows(rawOrders);
-                                            setFileName(`POSCake Shop: ${posCakeConfig.shopId}`);
-                                            setMapping({
-                                                customerName: 'customerName',
-                                                phoneNumber: 'phoneNumber',
-                                                address: 'address',
-                                                note: 'note',
-                                                cod: 'cod'
-                                            });
-                                            setStep(2);
-                                        } catch (error: any) {
-                                            setErrorMsg('Lỗi import POSCake: ' + error.message);
-                                        } finally {
-                                            setLoading(false);
-                                        }
-                                    }}
-                                    disabled={loading}
-                                    className="w-full bg-brand-teal hover:bg-teal-400 text-brand-dark font-bold py-2 rounded text-xs transition-colors"
-                                >
-                                    {loading ? 'Đang tải...' : 'Kết nối'}
-                                </button>
+                            <div className="space-y-2">
+                                <input type="text" className="w-full bg-slate-900/80 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 outline-none placeholder-gray-500" placeholder="API Key..." value={posCakeConfig.apiKey} onChange={(e) => setPosCakeConfig({ ...posCakeConfig, apiKey: e.target.value })} />
+                                <input type="text" className="w-full bg-slate-900/80 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 outline-none placeholder-gray-500" placeholder="Shop ID..." value={posCakeConfig.shopId} onChange={(e) => setPosCakeConfig({ ...posCakeConfig, shopId: e.target.value })} />
+                                <button onClick={async () => { if (!posCakeConfig.apiKey || !posCakeConfig.shopId) { setErrorMsg('Vui long nhap API Key va Shop ID'); return; } setLoading(true); setErrorMsg(''); try { const response = await apiFetch('/api/poscake/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shopId: posCakeConfig.shopId, token: posCakeConfig.apiKey }) }); const data = await response.json(); if (data.error) throw new Error(data.error); const newOrders = data.data.map((r: any) => ({ id: r.id, address: r.address, lat: 0, lng: 0, weight: r.weight || 1, cod: r.cod || 0, customerName: r.customerName, status: 'pending' })); const headerRow = ['id', 'customerName', 'address', 'weight', 'cod', 'status']; setHeaders(headerRow); const rawOrders = newOrders.map((o: any, idx: number) => ({ id: `pos-${idx}`, ...o, weight: String(o.weight), cod: String(o.cod) })); setParsedRows(rawOrders); setFileName(`POSCake: ${posCakeConfig.shopId}`); setMapping({ customerName: 'customerName', phoneNumber: 'phoneNumber', address: 'address', note: 'note', cod: 'cod' }); setStep(2); } catch (error: any) { setErrorMsg('Loi POSCake: ' + error.message); } finally { setLoading(false); } }} disabled={loading} className="w-full bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-semibold py-2 rounded-lg text-xs transition-colors">{loading ? 'Dang tai...' : 'Ket noi'}</button>
                             </div>
                         </div>
+
+                        {/* KiotViet */}
+                        <div className="bg-gradient-to-br from-slate-800 to-slate-800/50 rounded-xl border border-slate-700 hover:border-orange-500/40 transition-all group p-5">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-lg bg-orange-500/15 flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-5 h-5 text-orange-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h5 className="text-white font-bold text-sm">KiotViet</h5>
+                                    <p className="text-gray-500 text-xs">Quan ly ban hang</p>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <input type="text" className="w-full bg-slate-900/80 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-xs focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 outline-none placeholder-gray-500" placeholder="Client ID..." value={kiotvietConfig.clientId} onChange={(e) => setKiotvietConfig({ ...kiotvietConfig, clientId: e.target.value })} />
+                                <input type="password" className="w-full bg-slate-900/80 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-xs focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 outline-none placeholder-gray-500" placeholder="Client Secret..." value={kiotvietConfig.clientSecret} onChange={(e) => setKiotvietConfig({ ...kiotvietConfig, clientSecret: e.target.value })} />
+                                <input type="text" className="w-full bg-slate-900/80 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-xs focus:border-orange-500 focus:ring-1 focus:ring-orange-500/20 outline-none placeholder-gray-500" placeholder="Ten cua hang (Retailer)..." value={kiotvietConfig.retailer} onChange={(e) => setKiotvietConfig({ ...kiotvietConfig, retailer: e.target.value })} />
+                                <button onClick={async () => { if (!kiotvietConfig.clientId || !kiotvietConfig.clientSecret || !kiotvietConfig.retailer) { setErrorMsg('Vui long nhap day du thong tin KiotViet'); return; } setLoading(true); setErrorMsg(''); try { const response = await apiFetch('/api/kiotviet/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(kiotvietConfig) }); const data = await response.json(); if (data.error) throw new Error(data.error); const orders = data.data || []; if (orders.length === 0) { setErrorMsg('Khong tim thay don hang tren KiotViet.'); return; } const headerRow = ['id', 'customerName', 'phoneNumber', 'address', 'note', 'cod', 'status']; setHeaders(headerRow); const rawOrders = orders.map((o: any, idx: number) => ({ id: `kv-${idx}`, ...o, cod: String(o.cod || 0) })); setParsedRows(rawOrders); setFileName(`KiotViet: ${kiotvietConfig.retailer}`); setMapping({ customerName: 'customerName', phoneNumber: 'phoneNumber', address: 'address', note: 'note', cod: 'cod' }); setStep(2); } catch (error: any) { setErrorMsg('Loi KiotViet: ' + error.message); } finally { setLoading(false); } }} disabled={loading} className="w-full bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-semibold py-2 rounded-lg text-xs transition-colors">{loading ? 'Dang tai...' : 'Ket noi KiotViet'}</button>
+                            </div>
+                        </div>
+
+                        {/* Nhanh.vn */}
+                        <div className="bg-gradient-to-br from-slate-800 to-slate-800/50 rounded-xl border border-slate-700 hover:border-sky-500/40 transition-all group p-5">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-lg bg-sky-500/15 flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-5 h-5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h5 className="text-white font-bold text-sm">Nhanh.vn</h5>
+                                    <p className="text-gray-500 text-xs">Quan ly ban hang online</p>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <input type="text" className="w-full bg-slate-900/80 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-xs focus:border-sky-500 focus:ring-1 focus:ring-sky-500/20 outline-none placeholder-gray-500" placeholder="App ID..." value={nhanhConfig.appId} onChange={(e) => setNhanhConfig({ ...nhanhConfig, appId: e.target.value })} />
+                                <input type="text" className="w-full bg-slate-900/80 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-xs focus:border-sky-500 focus:ring-1 focus:ring-sky-500/20 outline-none placeholder-gray-500" placeholder="Business ID..." value={nhanhConfig.businessId} onChange={(e) => setNhanhConfig({ ...nhanhConfig, businessId: e.target.value })} />
+                                <input type="password" className="w-full bg-slate-900/80 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-xs focus:border-sky-500 focus:ring-1 focus:ring-sky-500/20 outline-none placeholder-gray-500" placeholder="Access Token..." value={nhanhConfig.accessToken} onChange={(e) => setNhanhConfig({ ...nhanhConfig, accessToken: e.target.value })} />
+                                <button onClick={async () => { if (!nhanhConfig.appId || !nhanhConfig.businessId || !nhanhConfig.accessToken) { setErrorMsg('Vui long nhap day du thong tin Nhanh.vn'); return; } setLoading(true); setErrorMsg(''); try { const response = await apiFetch('/api/nhanh/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nhanhConfig) }); const data = await response.json(); if (data.error) throw new Error(data.error); const orders = data.data || []; if (orders.length === 0) { setErrorMsg('Khong tim thay don hang tren Nhanh.vn.'); return; } const headerRow = ['id', 'customerName', 'phoneNumber', 'address', 'note', 'cod', 'status']; setHeaders(headerRow); const rawOrders = orders.map((o: any, idx: number) => ({ id: `nhanh-${idx}`, ...o, cod: String(o.cod || 0) })); setParsedRows(rawOrders); setFileName(`Nhanh.vn: ${nhanhConfig.businessId}`); setMapping({ customerName: 'customerName', phoneNumber: 'phoneNumber', address: 'address', note: 'note', cod: 'cod' }); setStep(2); } catch (error: any) { setErrorMsg('Loi Nhanh.vn: ' + error.message); } finally { setLoading(false); } }} disabled={loading} className="w-full bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-semibold py-2 rounded-lg text-xs transition-colors">{loading ? 'Dang tai...' : 'Ket noi Nhanh.vn'}</button>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             )}

@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { fetchLarkRecords, createLarkRecords } from '../larkService.js';
 import { fetchPoscakeOrders } from '../poscakeService.js';
+import { fetchKiotVietOrders } from '../kiotvietService.js';
+import { fetchNhanhOrders } from '../nhanhService.js';
 
 dotenv.config();
 
@@ -19,7 +21,7 @@ app.use((req, res, next) => {
         res.setHeader('Access-Control-Allow-Origin', origin);
     }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-TrackAsia-Key');
     res.setHeader('Access-Control-Max-Age', '86400');
     if (req.method === 'OPTIONS') {
         return res.sendStatus(204);
@@ -171,18 +173,55 @@ app.get('/api/poscake/orders', verifyAuth, rateLimit(10, 60000), async (req, res
     }
 });
 
-// Track Asia VRP Proxy - API key ONLY from server env
+// --- Helper: resolve effective TrackAsia key (user's or server default) ---
+const getEffectiveKey = (req) => {
+    const userKey = req.headers['x-trackasia-key'];
+    if (userKey && typeof userKey === 'string' && userKey.length > 10 && userKey.length < 200) {
+        return userKey;
+    }
+    return TRACK_ASIA_API_KEY;
+};
+
+// Test TrackAsia API Key
+app.post('/api/vrp/test-key', verifyAuth, rateLimit(5, 60000), async (req, res) => {
+    try {
+        const { apiKey } = req.body;
+
+        if (!apiKey || typeof apiKey !== 'string' || apiKey.length < 10 || apiKey.length > 200) {
+            return res.status(400).json({ valid: false, error: 'Invalid API key format' });
+        }
+
+        // Test with a simple geocode request
+        const testUrl = `https://maps.track-asia.com/api/v1/autocomplete?text=${encodeURIComponent('Ho Chi Minh City')}&key=${apiKey}&lang=vi`;
+        const response = await fetch(testUrl);
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data && (data.features || data.type)) {
+                return res.json({ valid: true });
+            }
+        }
+
+        return res.json({ valid: false, error: 'API key is not valid or has no access' });
+    } catch (error) {
+        console.error('Key test error:', error.message);
+        res.json({ valid: false, error: 'Failed to validate key' });
+    }
+});
+
+// Track Asia VRP Proxy - supports user key via X-TrackAsia-Key header
 app.post('/api/vrp/optimize', verifyAuth, rateLimit(20, 60000), async (req, res) => {
     try {
         if (!req.body.jobs || !Array.isArray(req.body.jobs)) {
             return res.status(400).json({ error: "Invalid payload: 'jobs' array is required" });
         }
 
-        if (!TRACK_ASIA_API_KEY) {
-            return res.status(500).json({ error: 'Server configuration error' });
+        const effectiveKey = getEffectiveKey(req);
+        if (!effectiveKey) {
+            return res.status(500).json({ error: 'No API key available. Please configure your TrackAsia API key in Settings.' });
         }
 
-        const response = await fetch(`https://maps.track-asia.com/api/v1/vrp?key=${TRACK_ASIA_API_KEY}`, {
+        const response = await fetch(`https://maps.track-asia.com/api/v1/vrp?key=${effectiveKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(req.body)
@@ -199,19 +238,20 @@ app.post('/api/vrp/optimize', verifyAuth, rateLimit(20, 60000), async (req, res)
     }
 });
 
-// Track Asia Geocoding Proxy - API key ONLY from server env
+// Track Asia Geocoding Proxy - supports user key via X-TrackAsia-Key header
 app.get('/api/vrp/geocode', verifyAuth, rateLimit(60, 60000), async (req, res) => {
     try {
         const { text } = req.query;
 
-        if (!TRACK_ASIA_API_KEY) {
-            return res.status(500).json({ error: 'Server configuration error' });
+        const effectiveKey = getEffectiveKey(req);
+        if (!effectiveKey) {
+            return res.status(500).json({ error: 'No API key available. Please configure your TrackAsia API key in Settings.' });
         }
         if (!text || typeof text !== 'string' || text.length > 500) {
             return res.status(400).json({ error: 'Invalid address text' });
         }
 
-        const url = `https://maps.track-asia.com/api/v1/autocomplete?text=${encodeURIComponent(text)}&key=${TRACK_ASIA_API_KEY}&lang=vi`;
+        const url = `https://maps.track-asia.com/api/v1/autocomplete?text=${encodeURIComponent(text)}&key=${effectiveKey}&lang=vi`;
         const response = await fetch(url);
         const data = await response.json();
 
@@ -219,6 +259,38 @@ app.get('/api/vrp/geocode', verifyAuth, rateLimit(60, 60000), async (req, res) =
     } catch (error) {
         console.error('Geocoding Proxy Error:', error.message);
         res.status(500).json({ error: 'Geocoding failed' });
+    }
+});
+
+// KiotViet API Proxy
+app.post('/api/kiotviet/orders', verifyAuth, rateLimit(10, 60000), async (req, res) => {
+    try {
+        const { clientId, clientSecret, retailer } = req.body;
+        if (!clientId || !clientSecret || !retailer) {
+            return res.status(400).json({ error: 'Missing KiotViet credentials (clientId, clientSecret, retailer)' });
+        }
+
+        const orders = await fetchKiotVietOrders(clientId, clientSecret, retailer);
+        res.json({ data: orders });
+    } catch (error) {
+        console.error('KiotViet Proxy Error:', error.message);
+        res.status(500).json({ error: error.message || 'Failed to fetch KiotViet orders' });
+    }
+});
+
+// Nhanh.vn API Proxy
+app.post('/api/nhanh/orders', verifyAuth, rateLimit(10, 60000), async (req, res) => {
+    try {
+        const { appId, businessId, accessToken } = req.body;
+        if (!appId || !businessId || !accessToken) {
+            return res.status(400).json({ error: 'Missing Nhanh.vn credentials (appId, businessId, accessToken)' });
+        }
+
+        const orders = await fetchNhanhOrders(appId, businessId, accessToken);
+        res.json({ data: orders });
+    } catch (error) {
+        console.error('Nhanh.vn Proxy Error:', error.message);
+        res.status(500).json({ error: error.message || 'Failed to fetch Nhanh.vn orders' });
     }
 });
 
